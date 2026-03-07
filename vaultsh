@@ -164,8 +164,16 @@ vaultsh_handle_read_secret() {
     "Enter a secret path and optionally a field name (leave field empty for full secret)." \
     ""
 
-  path="$(vaultsh_prompt "Secret path" "")"
-  [[ -z "$path" ]] && return 0
+  path="$(vaultsh_prompt "Secret path (Enter to browse)" "")"
+  if [[ -z "$path" ]]; then
+    vaultsh_nav_pick_path
+    if [[ -n "${VAULTSH_PICKED_PATH:-}" ]]; then
+      path="$VAULTSH_PICKED_PATH"
+      unset -v VAULTSH_PICKED_PATH
+    else
+      return 0
+    fi
+  fi
   field="$(vaultsh_prompt "Optional field (leave empty for full secret)" "")"
   vaultsh_read_secret "$path" "$field"
   vaultsh_pause

@@ -41,7 +41,9 @@ vaultsh_nav_up() {
   fi
 }
 
+# When pick_mode=1, selecting a leaf secret sets VAULTSH_PICKED_PATH and returns 0 instead of reading.
 vaultsh_nav_run() {
+  local pick_mode="${1:-0}"
   local current_path root list_out list_rc keys line selected full_path
   local -a options options_display
   local i idx
@@ -49,6 +51,7 @@ vaultsh_nav_run() {
   # Ensure root ends with /
   root="${root%/}/"
   current_path="$root"
+  [[ -n "${VAULTSH_PICKED_PATH:-}" ]] && unset -v VAULTSH_PICKED_PATH
 
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
@@ -161,6 +164,12 @@ vaultsh_nav_run() {
       continue
     fi
 
+    # Leaf secret selected
+    if (( pick_mode == 1 )); then
+      VAULTSH_PICKED_PATH="$full_path"
+      return 0
+    fi
+
     # Read secret at full_path
     vaultsh_section "Secret: ${full_path}"
     set +e
@@ -170,4 +179,9 @@ vaultsh_nav_run() {
     read -r -p "Press Enter to continue browsing..." _
     # Stay at same path so user can pick another key
   done
+}
+
+# Browse and set VAULTSH_PICKED_PATH when user selects a secret; return 0 then, 1 on cancel.
+vaultsh_nav_pick_path() {
+  vaultsh_nav_run 1
 }
