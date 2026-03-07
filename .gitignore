@@ -1,0 +1,21 @@
+# Local config (copy from config.example and edit)
+vaultsh.conf
+/.cursor
+
+# Editor backups and swap
+*~
+*.swp
+*.swo
+.*.sw?
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Temp / debug
+*.tmp
+*.temp
+*.log

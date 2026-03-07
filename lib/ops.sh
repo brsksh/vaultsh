@@ -120,6 +120,42 @@ vaultsh_session_check() {
   return 0
 }
 
+# Output secret field names at path (one per line). Requires jq. Return 0 on success.
+vaultsh_secret_fields() {
+  local path="$1" json
+  vaultsh_require_command vault || return 1
+  vaultsh_set_addr
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+  json="$(vault kv get -format=json "$path" 2>/dev/null)" || return 1
+  printf '%s\n' "$json" | jq -r '(.data.data // .data) | keys[]?' 2>/dev/null
+}
+
+# Let user pick a field at path; set VAULTSH_PICKED_FIELD and return 0, or return 1. mode=read|write.
+vaultsh_pick_field() {
+  local path="$1" mode="${2:-read}" fields line
+  [[ -z "$path" ]] && return 1
+  VAULTSH_PICKED_FIELD=""
+  fields="$(vaultsh_secret_fields "$path" 2>/dev/null)" || return 1
+  [[ -z "$fields" ]] && return 1
+  if [[ "$mode" == "read" ]]; then
+    (printf '%s\n' "(full secret)"; printf '%s\n' "$fields") | vaultsh_pick_from_list "Field (choose or ESC for full secret)"
+  else
+    (printf '%s\n' "$fields"; printf '%s\n' "(type new field)") | vaultsh_pick_from_list "Field (choose or ESC to type name)"
+  fi
+  [[ -z "${VAULTSH_PICKED_CHOICE:-}" ]] && return 1
+  if [[ "$VAULTSH_PICKED_CHOICE" == "(full secret)" ]]; then
+    VAULTSH_PICKED_FIELD=""
+  elif [[ "$VAULTSH_PICKED_CHOICE" == "(type new field)" ]]; then
+    VAULTSH_PICKED_FIELD="(type new field)"
+  else
+    VAULTSH_PICKED_FIELD="$VAULTSH_PICKED_CHOICE"
+  fi
+  unset -v VAULTSH_PICKED_CHOICE
+  return 0
+}
+
 vaultsh_read_secret() {
   local path="$1"
   local field="${2:-}"

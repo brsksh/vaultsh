@@ -38,6 +38,7 @@ A standalone, reusable CLI wrapper around the HashiCorp Vault CLI for interactiv
 - **Bash** (4.x or 5.x; for `[[ ]]`, arrays, etc.). On macOS the system Bash may be older; install a newer Bash (e.g. via Homebrew) if needed.
 - [HashiCorp Vault CLI](https://developer.hashicorp.com/vault/docs/install) installed and on your `PATH`
 - Optional: [fzf](https://github.com/junegunn/fzf) for interactive menus
+- Optional: [jq](https://jqlang.github.io/jq/) for browsing secret fields when reading or writing (Enter at the field prompt)
 
 ---
 

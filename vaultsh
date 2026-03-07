@@ -174,7 +174,13 @@ vaultsh_handle_read_secret() {
       return 0
     fi
   fi
-  field="$(vaultsh_prompt "Optional field (leave empty for full secret)" "")"
+  field="$(vaultsh_prompt "Optional field (Enter to browse, empty = full secret)" "")"
+  if [[ -z "$field" ]] && [[ -n "$path" ]]; then
+    if vaultsh_pick_field "$path" "read"; then
+      field="${VAULTSH_PICKED_FIELD:-}"
+      unset -v VAULTSH_PICKED_FIELD
+    fi
+  fi
   vaultsh_read_secret "$path" "$field"
   vaultsh_pause
 }
@@ -195,7 +201,16 @@ vaultsh_handle_write_secret() {
       unset -v VAULTSH_PICKED_PATH
     fi
   fi
-  field="$(vaultsh_prompt "Field name" "")"
+  field="$(vaultsh_prompt "Field name (Enter to browse)" "")"
+  if [[ -z "$field" ]] && [[ -n "$path" ]]; then
+    if vaultsh_pick_field "$path" "write"; then
+      field="${VAULTSH_PICKED_FIELD:-}"
+      unset -v VAULTSH_PICKED_FIELD
+    fi
+  fi
+  if [[ "$field" == "(type new field)" ]]; then
+    field="$(vaultsh_prompt "Field name" "")"
+  fi
   if [[ -z "$path" || -z "$field" ]]; then
     vaultsh_warn "Path and field are required. Skipping write."
     vaultsh_pause
