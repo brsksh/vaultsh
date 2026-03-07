@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 
 vaultsh_login_role() {
-  local role="$1"
+  local role="$1" errfile rc
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
-  vault login -method=oidc "role=${role}"
+  errfile="$(mktemp)" || { vault login -method=oidc "role=${role}"; return $?; }
+  trap 'rm -f "$errfile"' RETURN
+  vault login -method=oidc "role=${role}" 2>&1 | tee "$errfile"
+  rc=${PIPESTATUS[0]}
+  if (( rc != 0 )); then
+    if grep -q "connection refused\|dial tcp" "$errfile" 2>/dev/null; then
+      printf '%sVault server not reachable at %s. Check that the server is running; to use another server set VAULTSH_ADDR in ~/.config/vaultsh/config (or vaultsh.conf next to the script).%s\n' \
+        "$COLOR_WARN" "${VAULTSH_ADDR:-$VAULT_ADDR}" "$COLOR_RESET"
+    fi
+    return "$rc"
+  fi
 }
 
 vaultsh_show_status() {

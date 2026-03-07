@@ -44,11 +44,10 @@ vaultsh_load_config() {
   local script_dir="$1"
   local config_script config_home
 
-  vaultsh_load_defaults
-
   config_script="${script_dir}/vaultsh.conf"
   config_home="${XDG_CONFIG_HOME:-$HOME/.config}/vaultsh/config"
 
+  # Load config files first so their values (and env) override built-in defaults
   if [[ -f "$config_script" ]]; then
     # shellcheck disable=SC1090
     source "$config_script"
@@ -58,6 +57,7 @@ vaultsh_load_config() {
     source "$config_home"
   fi
 
+  vaultsh_load_defaults
   : "${VAULT_ADDR:=$VAULTSH_ADDR}"
 }
 
