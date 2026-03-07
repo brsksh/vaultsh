@@ -24,11 +24,11 @@ A standalone, reusable CLI wrapper around the HashiCorp Vault CLI for interactiv
 
 - **OIDC login** with configurable roles (e.g. reader, operator).
 - **Session check** — see if you're logged in; handles token lookup 403 with a configurable KV read fallback; clear messages for missing/expired token and permission denied.
-- **Read/write KV secrets** — default path and field from config, or arbitrary path/field.
+- **Read/write KV secrets** — specify path and optional field each time (no fixed default secret).
 - **Browse / Navigate** — walk KV paths, open "folders" (prefixes), and read secrets.
 - **Optional vault status and token lookup**.
 - **Diagnostics** — connectivity, token, and a sample secret read.
-- **Config file** (shell script) for default Vault address, roles, default KV path/field, and nav root; no hardcoded project references.
+- **Config file** (shell script) for Vault address, roles, optional session-probe path, and nav root; no hardcoded project references.
 - **Optional fzf** for menus; falls back to simple prompts.
 
 ---
@@ -104,7 +104,7 @@ ln -sf ~/.local/share/vaultsh/vaultsh ~/.local/bin/vaultsh
 
 3. Use the main menu: log in (OIDC reader or operator), browse KV paths, read or write secrets, run a session check, or run diagnostics.
 
-4. **Session check** shows whether you're still logged in; if token lookup returns permission denied, vaultsh tries a configurable KV read and reports clearly (e.g. "Session valid (KV access OK)" or "Token invalid or expired"). Use **Run diagnostics** for connectivity, token lookup, and a sample secret read.
+4. **Session check** shows whether you're still logged in. If token lookup returns permission denied, you can optionally set `VAULTSH_SESSION_PROBE_PATH` and `VAULTSH_SESSION_PROBE_FIELD` so vaultsh tries a KV read and reports clearly (e.g. "Session valid (KV access OK)" or "Token invalid or expired"). Use **Run diagnostics** for connectivity and token lookup (and an optional KV read if probe is configured).
 
 You can also run single actions without the menu: `vaultsh session-check`, `vaultsh read --path <path> [--field <field>]`, `vaultsh browse`. See `vaultsh --help` for details.
 
@@ -128,9 +128,8 @@ The script prompts for:
 
 - `VAULTSH_ADDR` (Vault server URL)
 - `VAULTSH_READER_ROLE` and `VAULTSH_OPERATOR_ROLE` (OIDC roles)
-- `VAULTSH_DEFAULT_KV_PATH` and `VAULTSH_DEFAULT_KV_FIELD` (default secret path and field)
 - `VAULTSH_NAV_ROOT` (start path for Browse; must end with `/`)
-- Optionally `VAULTSH_SESSION_PROBE_PATH` and `VAULTSH_SESSION_PROBE_FIELD` (used when token lookup returns 403)
+- Optionally `VAULTSH_SESSION_PROBE_PATH` and `VAULTSH_SESSION_PROBE_FIELD` (for session check when token lookup returns 403; Enter to skip)
 
 For non-interactive setup (e.g. in dotfiles):
 
@@ -138,8 +137,6 @@ For non-interactive setup (e.g. in dotfiles):
 VAULTSH_ADDR="https://vault.example.com" \
 VAULTSH_READER_ROLE="reader" \
 VAULTSH_OPERATOR_ROLE="operator" \
-VAULTSH_DEFAULT_KV_PATH="secret/myapp" \
-VAULTSH_DEFAULT_KV_FIELD="password" \
 VAULTSH_NAV_ROOT="secret/" \
 ./setup_vaultsh.sh --non-interactive
 ```
@@ -156,11 +153,9 @@ Config is loaded in this order (later overrides earlier):
 | `VAULTSH_ADDR` | Vault server address (sets `VAULT_ADDR` for the vault CLI) | `https://127.0.0.1:8200` |
 | `VAULTSH_READER_ROLE` | OIDC role for read-only use | `reader` |
 | `VAULTSH_OPERATOR_ROLE` | OIDC role for writes/maintenance | `operator` |
-| `VAULTSH_DEFAULT_KV_PATH` | Default KV path for read/write and quick actions | `secret/default` |
-| `VAULTSH_DEFAULT_KV_FIELD` | Default field name | `value` |
-| `VAULTSH_SESSION_PROBE_PATH` | Path used by session check when token lookup returns 403 | Same as default KV path |
-| `VAULTSH_SESSION_PROBE_FIELD` | Field for that probe | Same as default KV field |
-| `VAULTSH_NAV_ROOT` | Start path for Browse / Navigate (must end with `/`). Use the full path to your KV mount, e.g. `secret/` (common for KV v2) or `kv/` depending on how the engine is mounted. | `secret/` |
+| `VAULTSH_NAV_ROOT` | Start path for Browse / Navigate (must end with `/`). Use the full path to your KV mount, e.g. `secret/` or `kv/` depending on how the engine is mounted. | `secret/` |
+| `VAULTSH_SESSION_PROBE_PATH` | Optional path used by session check when token lookup returns 403 (KV fallback) | (empty) |
+| `VAULTSH_SESSION_PROBE_FIELD` | Optional field for that probe | (empty) |
 
 ### CLI appearance
 
@@ -173,7 +168,7 @@ Colored output is enabled by default when the terminal is a TTY. Disable with `e
 vaultsh does not write a separate log file. To troubleshoot:
 
 - Run `vaultsh` in a terminal and read any error messages.
-- Use the **Run diagnostics** menu option to see environment, `vault status`, token lookup, and a sample KV read in one place.
+- Use the **Run diagnostics** menu option to see environment, `vault status`, token lookup, and (if configured) a KV probe read.
 - Manually run `vault status` and `vault token lookup` with the same `VAULT_ADDR` (and token) to verify connectivity and token validity.
 
 ---

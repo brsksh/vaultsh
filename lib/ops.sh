@@ -27,8 +27,8 @@ vaultsh_session_check() {
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
 
-  probe_path="${VAULTSH_SESSION_PROBE_PATH:-$VAULTSH_DEFAULT_KV_PATH}"
-  probe_field="${VAULTSH_SESSION_PROBE_FIELD:-$VAULTSH_DEFAULT_KV_FIELD}"
+  probe_path="${VAULTSH_SESSION_PROBE_PATH:-}"
+  probe_field="${VAULTSH_SESSION_PROBE_FIELD:-}"
 
   if [[ "$(vaultsh_token_state)" == "missing" ]]; then
     printf '%sNot logged in (no token). Run login first.%s\n' "$COLOR_WARN" "$COLOR_RESET"
@@ -42,7 +42,12 @@ vaultsh_session_check() {
 
   if (( lookup_rc != 0 )); then
     # Token lookup can return permission denied when policy allows only KV access.
-    # If the configured KV probe succeeds, treat session as valid.
+    # If a probe path is configured and the KV read succeeds, treat session as valid.
+    if [[ -z "$probe_path" || -z "$probe_field" ]]; then
+      printf '%sSession unclear: token lookup failed (no VAULTSH_SESSION_PROBE_PATH/FIELD configured).%s\n' \
+        "$COLOR_WARN" "$COLOR_RESET"
+      return 1
+    fi
     if vault kv get "-field=${probe_field}" "${probe_path}" >/dev/null 2>&1; then
       kv_rc=0
     else
@@ -148,7 +153,8 @@ Quick Commands
 --------------
 export VAULT_ADDR="${VAULTSH_ADDR}"
 vault login -method=oidc role="${VAULTSH_READER_ROLE}"
-vault kv get -field=${VAULTSH_DEFAULT_KV_FIELD} ${VAULTSH_DEFAULT_KV_PATH}
+vault kv get <path>                    # full secret
+vault kv get -field=<field> <path>      # single field
 EOF
 }
 
@@ -165,8 +171,12 @@ vaultsh_run_diagnostics() {
   vaultsh_section "Environment"
   echo "VAULT_ADDR: ${current_addr}"
   echo "Token source: ${token_state}"
-  echo "Expected secret path: ${VAULTSH_DEFAULT_KV_PATH}"
-  echo "Expected secret field: ${VAULTSH_DEFAULT_KV_FIELD}"
+  if [[ -n "${VAULTSH_SESSION_PROBE_PATH:-}" ]]; then
+    echo "Session probe path: ${VAULTSH_SESSION_PROBE_PATH}"
+    echo "Session probe field: ${VAULTSH_SESSION_PROBE_FIELD:-}"
+  else
+    echo "Session probe: not set (optional)"
+  fi
 
   vaultsh_section "vault status"
   set +e
@@ -182,12 +192,19 @@ vaultsh_run_diagnostics() {
   set -e
   printf '%s\n' "$lookup_output"
 
-  vaultsh_section "KV read (default path/field)"
-  set +e
-  secret_output="$(vault kv get "-field=${VAULTSH_DEFAULT_KV_FIELD}" "${VAULTSH_DEFAULT_KV_PATH}" 2>&1)"
-  secret_rc=$?
-  set -e
-  printf '%s\n' "$secret_output"
+  secret_rc=0
+  if [[ -n "${VAULTSH_SESSION_PROBE_PATH:-}" && -n "${VAULTSH_SESSION_PROBE_FIELD:-}" ]]; then
+    vaultsh_section "KV read (session probe path/field)"
+    set +e
+    secret_output="$(vault kv get "-field=${VAULTSH_SESSION_PROBE_FIELD}" "${VAULTSH_SESSION_PROBE_PATH}" 2>&1)"
+    secret_rc=$?
+    set -e
+    printf '%s\n' "$secret_output"
+  else
+    secret_output=""
+    vaultsh_section "KV read"
+    echo "(Optional: set VAULTSH_SESSION_PROBE_PATH and VAULTSH_SESSION_PROBE_FIELD to test a KV read here.)"
+  fi
 
   vaultsh_section "Diagnosis"
   if (( status_rc != 0 )) && [[ "$status_output" == *"127.0.0.1:8200"* ]]; then
@@ -197,15 +214,21 @@ vaultsh_run_diagnostics() {
     echo "- No Vault token detected. Run OIDC login first."
   fi
   if (( lookup_rc != 0 )) && [[ "$lookup_output" == *"permission denied"* ]]; then
-    echo "- Token exists but lacks token lookup permission. KV probe path: ${VAULTSH_SESSION_PROBE_PATH}."
+    echo "- Token exists but lacks token lookup permission. Set VAULTSH_SESSION_PROBE_PATH for session-check fallback."
   fi
-  if (( secret_rc != 0 )) && [[ "$secret_output" == *"403"* ]]; then
-    echo "- Secret access returned 403. Check role, policy, or secret path."
+  if [[ -n "${secret_output:-}" ]]; then
+    if (( secret_rc != 0 )) && [[ "$secret_output" == *"403"* ]]; then
+      echo "- Secret access returned 403. Check role, policy, or secret path."
+    fi
+    if (( secret_rc != 0 )) && [[ "$secret_output" == *"No value found"* ]]; then
+      echo "- Path may exist but the expected field or secret does not exist yet."
+    fi
   fi
-  if (( secret_rc != 0 )) && [[ "$secret_output" == *"No value found"* ]]; then
-    echo "- Path may exist but the expected field or secret does not exist yet."
-  fi
-  if (( status_rc == 0 && lookup_rc == 0 && secret_rc == 0 )); then
-    echo "- Vault connectivity, token lookup, and default secret read look healthy."
+  if (( status_rc == 0 && lookup_rc == 0 )); then
+    if [[ -n "${VAULTSH_SESSION_PROBE_PATH:-}" ]] && (( secret_rc == 0 )); then
+      echo "- Vault connectivity, token lookup, and KV probe read look healthy."
+    else
+      echo "- Vault connectivity and token lookup look healthy."
+    fi
   fi
 }

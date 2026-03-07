@@ -32,11 +32,10 @@ vaultsh_load_defaults() {
   : "${VAULTSH_ADDR:=https://127.0.0.1:8200}"
   : "${VAULTSH_READER_ROLE:=reader}"
   : "${VAULTSH_OPERATOR_ROLE:=operator}"
-  : "${VAULTSH_DEFAULT_KV_PATH:=secret/default}"
-  : "${VAULTSH_DEFAULT_KV_FIELD:=value}"
-  : "${VAULTSH_SESSION_PROBE_PATH:=$VAULTSH_DEFAULT_KV_PATH}"
-  : "${VAULTSH_SESSION_PROBE_FIELD:=$VAULTSH_DEFAULT_KV_FIELD}"
   : "${VAULTSH_NAV_ROOT:=secret/}"
+  # Session probe optional; no default path/field
+  : "${VAULTSH_SESSION_PROBE_PATH:=}"
+  : "${VAULTSH_SESSION_PROBE_FIELD:=}"
   # Ensure VAULT_ADDR is set for vault CLI (env overrides config)
   : "${VAULT_ADDR:=$VAULTSH_ADDR}"
 }
@@ -59,9 +58,6 @@ vaultsh_load_config() {
     source "$config_home"
   fi
 
-  # Re-apply defaults so any unset vars get values (e.g. probe derived from default KV)
-  : "${VAULTSH_SESSION_PROBE_PATH:=$VAULTSH_DEFAULT_KV_PATH}"
-  : "${VAULTSH_SESSION_PROBE_FIELD:=$VAULTSH_DEFAULT_KV_FIELD}"
   : "${VAULT_ADDR:=$VAULTSH_ADDR}"
 }
 
@@ -128,12 +124,12 @@ vaultsh_print_header() {
 
   printf '%s%sHashiCorp Vault%s%s\n' \
     "$COLOR_BOLD" "$COLOR_PRIMARY" "$COLOR_RESET"
-  printf '%s%scontext%s     %s%s%s  %s%s%s  %sdefault path:field%s %s%s:%s%s\n' \
+  printf '%s%scontext%s     %s%s%s  %s%s%s  %snav root%s %s%s%s\n' \
     "$COLOR_DIM" "$COLOR_MUTED" "$COLOR_RESET" \
     "$token_color" "$token_badge" "$COLOR_RESET" \
     "$COLOR_SECONDARY" "$menu_badge" "$COLOR_RESET" \
     "$COLOR_MUTED" "$COLOR_RESET" \
-    "$COLOR_ACCENT" "${VAULTSH_DEFAULT_KV_PATH}" "${VAULTSH_DEFAULT_KV_FIELD}" "$COLOR_RESET"
+    "$COLOR_ACCENT" "${VAULTSH_NAV_ROOT}" "$COLOR_RESET"
   printf '%s%saddress%s     %s%s%s\n' \
     "$COLOR_DIM" "$COLOR_MUTED" "$COLOR_RESET" "$COLOR_BOLD" "$(vaultsh_current_addr)" "$COLOR_RESET"
   printf '%s-------------------------------------------------------------------------------%s\n' "$COLOR_PANEL" "$COLOR_RESET"

@@ -10,14 +10,10 @@ VAULTSH_ADDR="${VAULTSH_ADDR:-https://vault.example.com}"
 VAULTSH_READER_ROLE="${VAULTSH_READER_ROLE:-reader}"
 VAULTSH_OPERATOR_ROLE="${VAULTSH_OPERATOR_ROLE:-operator}"
 
-# Default KV path and field for read/write and quick actions
-VAULTSH_DEFAULT_KV_PATH="${VAULTSH_DEFAULT_KV_PATH:-secret/myapp}"
-VAULTSH_DEFAULT_KV_FIELD="${VAULTSH_DEFAULT_KV_FIELD:-password}"
-
-# Path and field used by session check when token lookup returns 403
-# (optional; defaults to default KV path/field above)
-# VAULTSH_SESSION_PROBE_PATH="${VAULTSH_SESSION_PROBE_PATH:-$VAULTSH_DEFAULT_KV_PATH}"
-# VAULTSH_SESSION_PROBE_FIELD="${VAULTSH_SESSION_PROBE_FIELD:-$VAULTSH_DEFAULT_KV_FIELD}"
-
 # Start path for Browse / Navigate (must end with / for vault kv list)
 VAULTSH_NAV_ROOT="${VAULTSH_NAV_ROOT:-secret/}"
+
+# Optional: path and field used by session check when token lookup returns 403
+# Leave unset to skip KV fallback (session check will only use token lookup).
+# VAULTSH_SESSION_PROBE_PATH="${VAULTSH_SESSION_PROBE_PATH:-}"
+# VAULTSH_SESSION_PROBE_FIELD="${VAULTSH_SESSION_PROBE_FIELD:-}"

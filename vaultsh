@@ -27,13 +27,13 @@ Subcommands (optional; without one, the interactive menu starts):
   browse           Start the KV path browser.
 
 Options for read:
-  --path, -p PATH  Secret path (default: from config).
+  --path, -p PATH  Secret path (required).
   --field, -f NAME Secret field (optional; omit for full secret).
 
   - OIDC login (configurable reader/operator roles)
   - Session check and token/status inspection
   - Browse KV paths and read secrets
-  - Read/write KV secrets (default or arbitrary path/field)
+  - Read/write KV secrets (path and field chosen each time)
   - Diagnostics for connectivity and token issues
 
 Not intended for automation or CI; use the vault CLI directly there.
@@ -46,7 +46,7 @@ vaultsh_show_main_hint() {
 
   vaultsh_print_panel \
     "session" \
-    "Login, then browse, read or write secrets at the default path or any KV path." \
+    "Login, then browse, read or write secrets at any KV path." \
     "Use diagnostics when auth succeeds but CLI reads fail."
 
   vaultsh_print_panel \
@@ -63,7 +63,7 @@ vaultsh_recommended_next_line_one() {
       printf '%s\n' "1. Open Login and start an OIDC reader session."
       ;;
     file|env)
-      printf '%s\n' "1. Browse KV or read the default secret, or inspect token details."
+      printf '%s\n' "1. Browse KV or read a secret, or inspect token details."
       ;;
     *)
       printf '%s\n' "1. Start with Login to establish a clean Vault session."
@@ -151,34 +151,16 @@ vaultsh_handle_status_menu() {
 }
 
 vaultsh_handle_read_secret() {
-  local path field use_default
+  local path field
   vaultsh_show_guidance \
     "read" \
-    "Read the configured default path/field or any other KV path." \
-    "Use arbitrary path to inspect other secrets."
+    "Enter a secret path and optionally a field name (leave field empty for full secret)." \
+    ""
 
-  use_default="$(vaultsh_select_option \
-    "Read secret" \
-    "1|Read default secret|Read ${VAULTSH_DEFAULT_KV_PATH}:${VAULTSH_DEFAULT_KV_FIELD} (from config)." \
-    "2|Read arbitrary secret path|Inspect another secret path or full secret document." \
-    "b|Back|Return to the main menu.")" || return 0
-
-  case "$use_default" in
-    1)
-      vaultsh_read_secret \
-        "${VAULTSH_DEFAULT_KV_PATH}" \
-        "${VAULTSH_DEFAULT_KV_FIELD}"
-      ;;
-    2)
-      path="$(vaultsh_prompt "Secret path" "${VAULTSH_DEFAULT_KV_PATH}")"
-      field="$(vaultsh_prompt "Optional field (leave empty for full secret)" "")"
-      vaultsh_read_secret "$path" "$field"
-      ;;
-    *)
-      return 0
-      ;;
-  esac
-
+  path="$(vaultsh_prompt "Secret path" "")"
+  [[ -z "$path" ]] && return 0
+  field="$(vaultsh_prompt "Optional field (leave empty for full secret)" "")"
+  vaultsh_read_secret "$path" "$field"
   vaultsh_pause
 }
 
@@ -190,8 +172,13 @@ vaultsh_handle_write_secret() {
     "Writes are previewed first and stay intentionally explicit." \
     "Use operator access before attempting updates or rotations."
 
-  path="$(vaultsh_prompt "Secret path" "${VAULTSH_DEFAULT_KV_PATH}")"
-  field="$(vaultsh_prompt "Field name" "${VAULTSH_DEFAULT_KV_FIELD}")"
+  path="$(vaultsh_prompt "Secret path" "")"
+  field="$(vaultsh_prompt "Field name" "")"
+  if [[ -z "$path" || -z "$field" ]]; then
+    vaultsh_warn "Path and field are required. Skipping write."
+    vaultsh_pause
+    return 0
+  fi
   value="$(vaultsh_prompt_secret "Field value (hidden)")"
   preview_cmd=(vault kv put "$path" "${field}=***")
   vaultsh_print_preview "write secret" "${preview_cmd[@]}"
@@ -203,13 +190,14 @@ vaultsh_handle_write_secret() {
 }
 
 vaultsh_handle_help() {
-  vaultsh_print_panel "defaults"
+  vaultsh_print_panel "config"
   vaultsh_print_kv "address" "${VAULTSH_ADDR}"
   vaultsh_print_kv "reader" "${VAULTSH_READER_ROLE}"
   vaultsh_print_kv "operator" "${VAULTSH_OPERATOR_ROLE}"
-  vaultsh_print_kv "default path" "${VAULTSH_DEFAULT_KV_PATH}"
-  vaultsh_print_kv "default field" "${VAULTSH_DEFAULT_KV_FIELD}"
   vaultsh_print_kv "nav root" "${VAULTSH_NAV_ROOT}"
+  if [[ -n "${VAULTSH_SESSION_PROBE_PATH:-}" ]]; then
+    vaultsh_print_kv "session probe" "${VAULTSH_SESSION_PROBE_PATH}:${VAULTSH_SESSION_PROBE_FIELD:-}"
+  fi
   printf '%s-------------------------------------------------------------------------------%s\n' "$COLOR_PANEL" "$COLOR_RESET"
 
   echo
@@ -230,7 +218,7 @@ vaultsh_handle_palette() {
     "1|Login as reader|Open an OIDC reader session immediately." \
     "2|Login as operator|Open an OIDC operator session immediately." \
     "3|Browse KV|Navigate through Vault KV paths and read secrets." \
-    "4|Read default secret|Fetch ${VAULTSH_DEFAULT_KV_PATH}:${VAULTSH_DEFAULT_KV_FIELD}." \
+    "4|Read secret|Prompt for path and optional field, then read." \
     "5|Run diagnostics|Bundle the common health, token, and secret checks." \
     "6|Session check|Show whether you are still logged in or need to log in." \
     "7|Open write flow|Go directly to the write/update menu." \
@@ -251,10 +239,7 @@ vaultsh_handle_palette() {
       vaultsh_pause
       ;;
     4)
-      vaultsh_read_secret \
-        "${VAULTSH_DEFAULT_KV_PATH}" \
-        "${VAULTSH_DEFAULT_KV_FIELD}"
-      vaultsh_pause
+      vaultsh_handle_read_secret
       ;;
     5)
       vaultsh_run_diagnostics
@@ -288,11 +273,10 @@ vaultsh_main_menu() {
       "1|Login and identity|Open an OIDC session as reader or operator." \
       "2|Token and status checks|Inspect connection, current token, and Vault health." \
       "3|Browse / Navigate|Navigate KV paths and read secrets." \
-      "4|Read default secret|Fetch the default path/field from config." \
-      "5|Read any secret path|Inspect another secret or field without changing state." \
-      "6|Write or update secret|Perform controlled writes with preview and confirmation." \
-      "7|Run diagnostics|Bundle the common checks for 403s, missing tokens, and wrong paths." \
-      "8|Show quick commands|Print the equivalent manual CLI commands." \
+      "4|Read secret|Enter path and optional field to read a secret." \
+      "5|Write or update secret|Perform controlled writes with preview and confirmation." \
+      "6|Run diagnostics|Bundle the common checks for 403s, missing tokens, and wrong paths." \
+      "7|Show quick commands|Print the equivalent manual CLI commands." \
       "q|Quit|Leave the interactive shell.")" || break
 
     case "$choice" in
@@ -310,22 +294,16 @@ vaultsh_main_menu() {
         vaultsh_pause
         ;;
       4)
-        vaultsh_read_secret \
-          "${VAULTSH_DEFAULT_KV_PATH}" \
-          "${VAULTSH_DEFAULT_KV_FIELD}"
-        vaultsh_pause
-        ;;
-      5)
         vaultsh_handle_read_secret
         ;;
-      6)
+      5)
         vaultsh_handle_write_secret
         ;;
-      7)
+      6)
         vaultsh_run_diagnostics
         vaultsh_pause
         ;;
-      8)
+      7)
         vaultsh_handle_help
         ;;
       q|Q)
@@ -373,7 +351,7 @@ main() {
 }
 
 run_read_subcommand() {
-  local path="${VAULTSH_DEFAULT_KV_PATH}"
+  local path=""
   local field=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -390,6 +368,10 @@ run_read_subcommand() {
         ;;
     esac
   done
+  if [[ -z "$path" ]]; then
+    vaultsh_error "read subcommand requires --path (or -p). Example: vaultsh read -p kv/myapp"
+    exit 1
+  fi
   vaultsh_read_secret "$path" "$field"
 }
 
