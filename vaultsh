@@ -187,7 +187,14 @@ vaultsh_handle_write_secret() {
     "Writes are previewed first and stay intentionally explicit." \
     "Use operator access before attempting updates or rotations."
 
-  path="$(vaultsh_prompt "Secret path" "")"
+  path="$(vaultsh_prompt "Secret path (Enter to browse)" "")"
+  if [[ -z "$path" ]]; then
+    vaultsh_nav_pick_path
+    if [[ -n "${VAULTSH_PICKED_PATH:-}" ]]; then
+      path="$VAULTSH_PICKED_PATH"
+      unset -v VAULTSH_PICKED_PATH
+    fi
+  fi
   field="$(vaultsh_prompt "Field name" "")"
   if [[ -z "$path" || -z "$field" ]]; then
     vaultsh_warn "Path and field are required. Skipping write."
