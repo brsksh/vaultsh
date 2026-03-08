@@ -5,12 +5,17 @@ vaultsh_nav_list() {
   local path="$1"
   local raw line
   vaultsh_set_addr
-  raw="$(vault kv list -format=table "$path" 2>&1)" || return 1
-  # Table format: "Keys" then "----" then one key per line
-  printf '%s\n' "$raw" | tail -n +3 | while IFS= read -r line; do
-    [[ -z "${line// /}" ]] && continue
-    printf '%s\n' "$line"
-  done
+  if command -v jq >/dev/null 2>&1; then
+    raw="$(vault kv list -format=json "$path" 2>&1)" || return 1
+    printf '%s\n' "$raw" | jq -r '.data.keys[]?' 2>/dev/null
+  else
+    # Fallback: parse human-readable table format (Keys / ---- / entries)
+    raw="$(vault kv list -format=table "$path" 2>&1)" || return 1
+    printf '%s\n' "$raw" | tail -n +3 | while IFS= read -r line; do
+      [[ -z "${line// /}" ]] && continue
+      printf '%s\n' "$line"
+    done
+  fi
 }
 
 # Returns 0 if path is at or above nav root (can go "up").
@@ -190,41 +195,3 @@ vaultsh_nav_pick_path() {
   vaultsh_nav_run 1
 }
 
-# Read options from stdin (one per line), show picker; set VAULTSH_PICKED_CHOICE and return 0, or return 1 on cancel.
-# First argument is the prompt/header string.
-vaultsh_pick_from_list() {
-  local header="${1:-Choose}"
-  local -a options
-  local line selected i idx
-  VAULTSH_PICKED_CHOICE=""
-  options=()
-  while IFS= read -r line; do
-    [[ -z "${line// /}" ]] && continue
-    options+=("$line")
-  done
-  (( ${#options[@]} == 0 )) && return 1
-  if (( HAS_FZF == 1 )); then
-    set +e
-    selected="$(printf '%s\n' "${options[@]}" | fzf --prompt="${header}> " --height=~50% --layout=reverse --border --no-sort --header="$header")"
-    set -e
-    [[ -z "$selected" ]] && return 1
-  else
-    printf '%s%s%s\n' "$COLOR_BOLD" "$header" "$COLOR_RESET" >&2
-    i=1
-    for line in "${options[@]}"; do
-      printf '  %s[%s]%s %s\n' "$COLOR_ACCENT" "$i" "$COLOR_RESET" "$line" >&2
-      i=$((i + 1))
-    done
-    printf '\n' >&2
-    read -r -p "${COLOR_PRIMARY}Choice (number or Enter to cancel)${COLOR_RESET}: " selected >&2
-    [[ -z "$selected" ]] && return 1
-    if [[ "$selected" =~ ^[0-9]+$ ]]; then
-      idx=$((selected - 1))
-      if (( idx >= 0 && idx < ${#options[@]} )); then
-        selected="${options[$idx]}"
-      fi
-    fi
-  fi
-  VAULTSH_PICKED_CHOICE="$selected"
-  return 0
-}

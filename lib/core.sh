@@ -30,6 +30,12 @@ vaultsh_init_theme() {
   fi
 }
 
+# Returns visible length of a string (strips ANSI escape sequences before measuring).
+vaultsh_visible_len() {
+  local s="${1//$'\e'\[[0-9;]*m/}"
+  printf '%s\n' "${#s}"
+}
+
 vaultsh_load_defaults() {
   : "${VAULTSH_ADDR:=https://127.0.0.1:8200}"
   : "${VAULTSH_READER_ROLE:=reader}"
@@ -115,7 +121,7 @@ vaultsh_print_header() {
   if [[ -n "${VAULTSH_HEADER_SESSION_LINE:-}" ]]; then
     session_color="${VAULTSH_HEADER_SESSION_COLOR:-$COLOR_WARN}"
     pad=0
-    pad=$(( VAULTSH_HEADER_WIDTH - 5 - ${#VAULTSH_HEADER_SESSION_LINE} )) || true
+    pad=$(( VAULTSH_HEADER_WIDTH - 3 - $(vaultsh_visible_len "${VAULTSH_HEADER_SESSION_LINE}") )) || true
     [[ $pad -lt 0 ]] && pad=0
     printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
     printf '%s│%s ● %s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$session_color" "${VAULTSH_HEADER_SESSION_LINE}" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"

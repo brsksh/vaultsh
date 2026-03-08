@@ -42,26 +42,6 @@ vaultsh_prompt_secret() {
   printf '%s\n' "$reply"
 }
 
-vaultsh_prompt_multiline() {
-  local prompt="$1"
-  local terminator="${2:-EOF}"
-  local line=""
-  local result=""
-
-  printf '%s[%s%s%s]%s\n' "$COLOR_PANEL" "$COLOR_BOLD" "$prompt" "$COLOR_PANEL" "$COLOR_RESET" >&2
-  printf '  %sPaste your content below. Finish with a single line containing %s.%s\n' \
-    "$COLOR_MUTED" "$terminator" "$COLOR_RESET" >&2
-
-  while IFS= read -r line; do
-    if [[ "$line" == "$terminator" ]]; then
-      break
-    fi
-    result+="${line}"$'\n'
-  done
-
-  printf '%s' "$result"
-}
-
 vaultsh_select_option() {
   local prompt="$1"
   shift
@@ -148,4 +128,43 @@ vaultsh_show_guidance() {
   fi
   printf '%s-------------------------------------------------------------------------------%s\n' "$COLOR_PANEL" "$COLOR_RESET"
   echo
+}
+
+# Read options from stdin (one per line), show picker; set VAULTSH_PICKED_CHOICE and return 0, or return 1 on cancel.
+# First argument is the prompt/header string.
+vaultsh_pick_from_list() {
+  local header="${1:-Choose}"
+  local -a options
+  local line selected i idx
+  VAULTSH_PICKED_CHOICE=""
+  options=()
+  while IFS= read -r line; do
+    [[ -z "${line// /}" ]] && continue
+    options+=("$line")
+  done
+  (( ${#options[@]} == 0 )) && return 1
+  if (( HAS_FZF == 1 )); then
+    set +e
+    selected="$(printf '%s\n' "${options[@]}" | fzf --prompt="${header}> " --height=~50% --layout=reverse --border --no-sort --header="$header")"
+    set -e
+    [[ -z "$selected" ]] && return 1
+  else
+    printf '%s%s%s\n' "$COLOR_BOLD" "$header" "$COLOR_RESET" >&2
+    i=1
+    for line in "${options[@]}"; do
+      printf '  %s[%s]%s %s\n' "$COLOR_ACCENT" "$i" "$COLOR_RESET" "$line" >&2
+      i=$((i + 1))
+    done
+    printf '\n' >&2
+    read -r -p "${COLOR_PRIMARY}Choice (number or Enter to cancel)${COLOR_RESET}: " selected >&2
+    [[ -z "$selected" ]] && return 1
+    if [[ "$selected" =~ ^[0-9]+$ ]]; then
+      idx=$((selected - 1))
+      if (( idx >= 0 && idx < ${#options[@]} )); then
+        selected="${options[$idx]}"
+      fi
+    fi
+  fi
+  VAULTSH_PICKED_CHOICE="$selected"
+  return 0
 }

@@ -50,6 +50,28 @@ vaultsh_show_token_lookup() {
   vault token lookup
 }
 
+# Parse expire_time and ttl from vault token lookup JSON.
+# Sets __vaultsh_expire_time and __vaultsh_ttl (plain text; empty if not found).
+# Uses jq when available; falls back to regex.
+vaultsh_parse_token_json() {
+  local json_raw="$1"
+  local line
+  __vaultsh_expire_time=""
+  __vaultsh_ttl=""
+  if command -v jq >/dev/null 2>&1; then
+    __vaultsh_expire_time="$(printf '%s\n' "$json_raw" | jq -r '.data.expire_time // empty' 2>/dev/null)" || true
+    __vaultsh_ttl="$(printf '%s\n' "$json_raw" | jq -r '.data.ttl // empty' 2>/dev/null)" || true
+  else
+    line="$(printf '%s\n' "$json_raw" | tr -d '\n' | tr -s ' \t' ' ')"
+    if [[ "$line" =~ \"expire_time\":\"([^\"]+)\" ]]; then
+      __vaultsh_expire_time="${BASH_REMATCH[1]}"
+    fi
+    if [[ "$line" =~ \"ttl\":([0-9]+) ]]; then
+      __vaultsh_ttl="${BASH_REMATCH[1]}"
+    fi
+  fi
+}
+
 # Cache TTL in seconds for header session line
 : "${VAULTSH_HEADER_SESSION_CACHE_TTL:=30}"
 
@@ -85,15 +107,8 @@ vaultsh_refresh_header_session() {
   set -e
 
   if (( lookup_rc == 0 )); then
-    line="$(printf '%s\n' "$json_raw" | tr -d '\n' | tr -s ' \t' ' ')"
-    expire_time=""
-    ttl=""
-    if [[ "$line" =~ \"expire_time\":\"([^\"]+)\" ]]; then
-      expire_time="${BASH_REMATCH[1]}"
-    fi
-    if [[ "$line" =~ \"ttl\":\"([^\"]+)\" ]]; then
-      ttl="${BASH_REMATCH[1]}"
-    fi
+    vaultsh_parse_token_json "$json_raw"
+    expire_time="$__vaultsh_expire_time"
     if [[ -n "$expire_time" ]]; then
       expire_time="${expire_time/T/ }"
       expire_time="${expire_time%%.*}"
@@ -152,17 +167,15 @@ vaultsh_session_check() {
         "$COLOR_WARN" "$COLOR_RESET"
       return 1
     fi
-    if vault kv get "-field=${probe_field}" "${probe_path}" >/dev/null 2>&1; then
-      kv_rc=0
-    else
-      kv_rc=1
-    fi
+    set +e
+    kv_err="$(vault kv get "-field=${probe_field}" "${probe_path}" 2>&1)"
+    kv_rc=$?
+    set -e
     if (( kv_rc == 0 )); then
       printf '%sSession valid (KV access OK; token lookup not allowed by policy).%s\n' \
         "$COLOR_SUCCESS" "$COLOR_RESET"
       return 0
     fi
-    kv_err="$(vault kv get "-field=${probe_field}" "${probe_path}" 2>&1)" || true
     if [[ -n "${kv_err:-}" ]]; then
       printf '%sReason: %s%s\n' "$COLOR_MUTED" "${kv_err//$'\n'/ }" "$COLOR_RESET"
       if [[ "$kv_err" == *"invalid token"* ]] || [[ "$kv_err" == *"expired"* ]]; then
@@ -182,15 +195,9 @@ vaultsh_session_check() {
     return 1
   fi
 
-  line="$(printf '%s\n' "$json_raw" | tr -d '\n' | tr -s ' \t' ' ')"
-  expire_time=""
-  ttl=""
-  if [[ "$line" =~ \"expire_time\":\"([^\"]+)\" ]]; then
-    expire_time="${BASH_REMATCH[1]}"
-  fi
-  if [[ "$line" =~ \"ttl\":\"([^\"]+)\" ]]; then
-    ttl="${BASH_REMATCH[1]}"
-  fi
+  vaultsh_parse_token_json "$json_raw"
+  expire_time="$__vaultsh_expire_time"
+  ttl="$__vaultsh_ttl"
 
   if [[ -n "$expire_time" ]]; then
     expire_display="${expire_time/T/ }"
@@ -269,23 +276,9 @@ vaultsh_write_secret_value() {
   local value="$3"
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
-  vault kv put "$path" "${field}=${value}"
+  printf '%s' "$value" | vault kv put "$path" "${field}=-"
 }
 
-vaultsh_write_secret_from_file() {
-  local path="$1"
-  local field="$2"
-  local input_file="$3"
-  local value=""
-
-  if [[ ! -f "$input_file" ]]; then
-    vaultsh_error "Local file not found: ${input_file}"
-    return 1
-  fi
-
-  value="$(tr -d '\n' < "$input_file")"
-  vaultsh_write_secret_value "$path" "$field" "$value"
-}
 
 vaultsh_print_quick_commands() {
   cat <<EOF

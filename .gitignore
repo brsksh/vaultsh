@@ -1,6 +1,7 @@
 # Local config (copy from config.example and edit)
 vaultsh.conf
 /.cursor
+/.claude
 
 # Editor backups and swap
 *~
