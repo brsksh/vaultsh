@@ -80,6 +80,11 @@ vaultsh_select_option() {
       display_input+="${key}. ${label}"$'\t'"${description}"$'\n'
     done
 
+    local fzf_header="Move with arrows. Enter confirms. ESC goes back. Preview explains the action."
+    if [[ -n "${VAULTSH_HEADER_SESSION_LINE:-}" ]]; then
+      fzf_header="${VAULTSH_HEADER_SESSION_LINE}"$'\n'"${fzf_header}"
+    fi
+
     set +e
     selected="$(printf '%s' "$display_input" | fzf \
       --prompt="vaultsh > ${prompt}: " \
@@ -94,7 +99,7 @@ vaultsh_select_option() {
       --pointer='>' \
       --marker='+' \
       --color='border:8,separator:8,label:11,query:15,prompt:11,header:8,pointer:10,marker:10,fg:15,bg:-1,hl:11,info:8,preview-border:8,preview-label:10' \
-      --header='Move with arrows. Enter confirms. ESC goes back. Preview explains the action.')"
+      --header="$fzf_header")"
     local fzf_rc=$?
     set -e
 
