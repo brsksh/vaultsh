@@ -99,7 +99,7 @@ vaultsh_nav_run() {
     list_rc=$?
     set -e
     list_raw="$(cat "${list_tmp}")"
-    if (( list_rc != 0 )) || [[ "$list_raw" == *"permission denied"* ]] || [[ "$list_raw" == *"403"* ]]; then
+    if [[ $list_rc -ne 0 ]] || [[ "$list_raw" == *"permission denied"* ]] || [[ "$list_raw" == *"403"* ]]; then
       vaultsh_error "Cannot list path (permission denied or invalid path)."
       if [[ -n "${list_raw//[[:space:]]/}" ]]; then
         printf '%s\n' "$list_raw" | head -10
