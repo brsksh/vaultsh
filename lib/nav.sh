@@ -3,7 +3,7 @@
 # Lists direct children at the given path (must end with /). Output: one key per line.
 vaultsh_nav_list() {
   local path="$1"
-  local raw line rc
+  local raw line rc jq_out
   vaultsh_set_addr
   if command -v jq >/dev/null 2>&1; then
     raw="$(vault kv list -format=json "$path" 2>&1)"
@@ -12,7 +12,13 @@ vaultsh_nav_list() {
       printf '%s\n' "$raw"
       return "$rc"
     fi
-    printf '%s\n' "$raw" | jq -r '(.data.keys // .) | .[]?' 2>/dev/null
+    jq_out="$(printf '%s\n' "$raw" | jq -r '(.data.keys // .) | .[]?' 2>/dev/null)"
+    if [[ -z "$jq_out" ]]; then
+      case "$raw" in
+        *error*|*permission*|*403*|*denied*) printf '%s\n' "$raw"; return 1 ;;
+      esac
+    fi
+    printf '%s\n' "$jq_out"
   else
     raw="$(vault kv list -format=table "$path" 2>&1)"
     rc=$?
@@ -82,7 +88,11 @@ vaultsh_nav_run() {
     set -e
     if [[ $list_rc -ne 0 ]] || [[ "$list_out" == *"permission denied"* ]] || [[ "$list_out" == *"403"* ]]; then
       vaultsh_error "Cannot list path (permission denied or invalid path)."
-      printf '%s\n' "$list_out" | head -5
+      if [[ -n "${list_out//[[:space:]]/}" ]]; then
+        printf '%s\n' "$list_out" | head -10
+      else
+        printf '%s\n' "(vault list failed with no output — check VAULT_ADDR and token)"
+      fi
       # We already have a session here; don't suggest "session expired" or offer login.
       vaultsh_info "Check VAULTSH_NAV_ROOT (currently: ${VAULTSH_NAV_ROOT}) or policy list permission. Press Enter to return to menu."
       read -r -p "Press Enter to return to menu..." _
