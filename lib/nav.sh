@@ -62,8 +62,10 @@ vaultsh_nav_run() {
 
   while true; do
     vaultsh_section "Browse: ${current_path}"
+    set +e
     list_out="$(vaultsh_nav_list "$current_path" 2>&1)"
     list_rc=$?
+    set -e
     if [[ $list_rc -ne 0 ]] || [[ "$list_out" == *"permission denied"* ]] || [[ "$list_out" == *"403"* ]]; then
       vaultsh_error "Cannot list path (permission denied or invalid path)."
       printf '%s\n' "$list_out" | head -5
