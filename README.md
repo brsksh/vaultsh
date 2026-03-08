@@ -151,6 +151,24 @@ VAULTSH_OPERATOR_ROLE="operator"
 | `VAULTSH_SESSION_PROBE_PATH` | Optional path for session check KV fallback | (empty) |
 | `VAULTSH_SESSION_PROBE_FIELD` | Optional field for that probe | (empty) |
 
+### Browse: mount list vs fixed start
+
+- **Option A — Show all KV mounts (default)**  
+  Leave `VAULTSH_NAV_ROOT` unset. When you choose **Browse**, vaultsh lists all KV secrets engines (e.g. `kv/`, `secret/`) and you pick one.  
+  **Policy:** Your token needs read access to `sys/mounts` so vaultsh can discover mounts. Add to the role’s policy (e.g. reader/operator):
+
+  ```hcl
+  path "sys/mounts" {
+    capabilities = ["read"]
+  }
+  ```
+
+- **Option B — Start in one mount**  
+  Set `VAULTSH_NAV_ROOT="kv/"` (or `secret/`, etc.). Browse opens directly in that mount; no mount list and **no** `sys/mounts` permission needed.  
+  **Policy:** Only the usual KV permissions (list/read on that mount); no `sys` policy required.
+
+If you see *"No KV secrets engines found (or no sys/mounts permission)"*, either add the `sys/mounts` block above to your policy or use Option B and set `VAULTSH_NAV_ROOT` to your mount (e.g. `kv/`).
+
 Colored output is enabled when the terminal is a TTY. Disable with `export NO_COLOR=1`.
 
 ---
