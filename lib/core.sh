@@ -86,7 +86,7 @@ vaultsh_current_addr() {
 }
 
 vaultsh_set_addr() {
-  export VAULT_ADDR="${VAULTSH_ADDR}"
+  export VAULT_ADDR="${VAULTSH_ADDR:-$VAULT_ADDR}"
 }
 
 vaultsh_token_state() {
