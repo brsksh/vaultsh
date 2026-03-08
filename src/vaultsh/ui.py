@@ -75,25 +75,23 @@ def print_header(
     menu_badge: str,
     nav_root: str,
     address: str,
+    show_hint_panels: bool = True,
 ) -> None:
+    """Compact header: one box (Vault + session, addr, nav), optional one-line hint. Panels only when show_hint_panels."""
     c = console()
     w = HEADER_WIDTH
     top = _rule("─", w)
-    if session_line:
-        line = f" ● {session_line}"
-        c.print(Text("╭" + top + "╮", style="border"))
-        c.print(Text("│", style="border") + Text(_box_line(line, w), style=session_color) + Text("│", style="border"))
-        c.print(Text("╰" + top + "╯", style="border"))
-        c.print()
+    # One compact box: line1 = Vault + session, line2 = addr | nav | token
+    session_part = f"  ● {session_line}" if session_line else "  ● —"
+    prefix = " HashiCorp Vault"
+    pad = max(0, w - len(prefix) - len(session_part))
     c.print(Text("╭" + top + "╮", style="border"))
-    c.print(Text("│", style="border") + Text(_box_line(" HashiCorp Vault", w), style="bold primary") + Text("│", style="border"))
-    # 72 chars between pipes: " " + "context    " (11) + badge + padding
-    c.print(Text("│", style="border") + Text(" ", style="border") + Text("context    ", style="dim") + Text(token_badge, style=token_color) + Text(_pad("", w - 11 - len(token_badge)) + "│", style="border"))
-    c.print(Text("│", style="border") + Text(" ", style="border") + Text("menu      ", style="dim") + Text(menu_badge, style="secondary") + Text(_pad("", w - 11 - len(menu_badge)) + "│", style="border"))
-    c.print(Text("│", style="border") + Text(" ", style="border") + Text("nav root  ", style="dim") + Text(nav_root, style="accent") + Text(_pad("", w - 11 - len(nav_root)) + "│", style="border"))
-    c.print(Text("│", style="border") + Text(" ", style="border") + Text("address   ", style="dim") + Text(address, style="bold") + Text(_pad("", w - 11 - len(address)) + "│", style="border"))
+    c.print(Text("│", style="border") + Text(prefix, style="bold primary") + Text(session_part + " " * pad, style=session_color) + Text("│", style="border"))
+    line2 = f" {address}  nav: {nav_root}  {token_badge}  {menu_badge}"
+    c.print(Text("│", style="border") + Text((line2 + " " * w)[:w], style="dim") + Text("│", style="border"))
     c.print(Text("╰" + top + "╯", style="border"))
-    c.print(Text("  Login, browse, read/write KV secrets, inspect session, diagnose.", style="dim"))
+    if show_hint_panels:
+        c.print(Text("  Login, browse, read/write KV secrets, inspect session, diagnose.", style="muted"))
     c.print()
 
 
@@ -226,27 +224,28 @@ def select_option(
                         return key
                 return key_part
         return None
-    # Numbered fallback
+    # Classic fallback: number or letter, then Enter
     console().print(Text(prompt_text, style="bold"))
-    for key, label, desc in options:
-        console().print(Text(f"  [{key}] ", style="accent") + Text(label, style="primary"))
+    for i, (key, label, desc) in enumerate(options):
+        num = str(i + 1) if i < 9 else ""
+        console().print(Text(f"  {num or '·'} ", style="accent") + Text(f"[{key}] ", style="accent") + Text(label, style="primary"))
         if desc:
             console().print(Text(f"      {desc}", style="muted"))
-    console().print(Text("\nChoose one option and press Enter.", style="muted"))
+    console().print(Text("  Number or letter, then Enter.", style="muted"))
     try:
-        sel = input("Selection: ").strip()
+        sel = input("Choice: ").strip().lower()
     except (EOFError, KeyboardInterrupt):
         return None
     if not sel:
         return None
     for key, label, _ in options:
-        if key == sel:
+        if key.lower() == sel:
             return key
     if sel.isdigit():
         idx = int(sel) - 1
         if 0 <= idx < len(options):
             return options[idx][0]
-    return sel
+    return None
 
 
 def pick_from_list(header: str, options: list[str]) -> Optional[str]:

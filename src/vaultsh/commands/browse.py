@@ -171,7 +171,8 @@ def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool
             continue
 
         full = _full_path(mount_point, current_path)
-        print_section("Browse", f"Browse: {full}")
+        breadcrumb = full.rstrip("/").replace("/", " / ") or (mount_point + "/")
+        print_section("Browse", breadcrumb)
 
         keys = _list_keys(client, mount_point, current_path.rstrip("/") if current_path else "")
         options_list: list[tuple[str, str, str]] = []

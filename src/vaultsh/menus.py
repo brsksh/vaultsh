@@ -94,10 +94,10 @@ def run_main_menu(cfg: dict[str, Any]) -> None:
         nav_root = (cfg.get("VAULTSH_NAV_ROOT") or "").strip() or "(all mounts)"
         addr = cfg.get("VAULT_ADDR") or cfg.get("VAULTSH_ADDR") or "https://127.0.0.1:8200"
 
-        print_header(session_line, session_style, token_badge, token_style, menu_badge, nav_root, addr)
-        print_panel("session", "Login, then browse, read or write secrets at any KV path.",
-                    "Use diagnostics when auth succeeds but CLI reads fail.")
-        print_panel("recommended next", _recommended_one(state), _recommended_two(state))
+        need_hint = state == "missing" or session_style == "warn"
+        print_header(session_line, session_style, token_badge, token_style, menu_badge, nav_root, addr, show_hint_panels=need_hint)
+        if need_hint:
+            print_panel("next", _recommended_one(state), _recommended_two(state))
         console().print()
 
         choice = select_option(
