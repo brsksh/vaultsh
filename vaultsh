@@ -158,11 +158,16 @@ vaultsh_handle_status_menu() {
 }
 
 vaultsh_handle_read_secret() {
-  local path field
+  local path field rc
   vaultsh_show_guidance \
     "read" \
     "Enter a secret path and optionally a field name (leave field empty for full secret)." \
     ""
+
+  if ! vaultsh_ensure_session; then
+    vaultsh_pause
+    return 0
+  fi
 
   path="$(vaultsh_prompt "Secret path (Enter to browse)" "")"
   if [[ -z "$path" ]]; then
@@ -181,17 +186,30 @@ vaultsh_handle_read_secret() {
       unset -v VAULTSH_PICKED_FIELD
     fi
   fi
+  set +e
   vaultsh_read_secret "$path" "$field"
+  rc=$?
+  set -e
+  if (( rc != 0 )); then
+    if vaultsh_offer_login "Session may have expired or access denied."; then
+      vaultsh_read_secret "$path" "$field"
+    fi
+  fi
   vaultsh_pause
 }
 
 vaultsh_handle_write_secret() {
-  local path field value
+  local path field value rc
   local -a preview_cmd
   vaultsh_show_guidance \
     "write" \
     "Writes are previewed first and stay intentionally explicit." \
     "Use operator access before attempting updates or rotations."
+
+  if ! vaultsh_ensure_session; then
+    vaultsh_pause
+    return 0
+  fi
 
   path="$(vaultsh_prompt "Secret path (Enter to browse)" "")"
   if [[ -z "$path" ]]; then
@@ -220,7 +238,15 @@ vaultsh_handle_write_secret() {
   preview_cmd=(vault kv put "$path" "${field}=***")
   vaultsh_print_preview "write secret" "${preview_cmd[@]}"
   if vaultsh_confirm "Execute this write" "N"; then
+    set +e
     vaultsh_write_secret_value "$path" "$field" "$value"
+    rc=$?
+    set -e
+    if (( rc != 0 )); then
+      if vaultsh_offer_login "Session may have expired or access denied."; then
+        vaultsh_write_secret_value "$path" "$field" "$value"
+      fi
+    fi
   fi
 
   vaultsh_pause

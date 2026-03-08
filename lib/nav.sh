@@ -56,8 +56,7 @@ vaultsh_nav_run() {
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
 
-  if [[ "$(vaultsh_token_state)" == "missing" ]]; then
-    vaultsh_warn "Not logged in. Run login first, then try Browse again."
+  if ! vaultsh_ensure_session; then
     return 1
   fi
 
@@ -66,8 +65,11 @@ vaultsh_nav_run() {
     list_out="$(vaultsh_nav_list "$current_path" 2>&1)"
     list_rc=$?
     if [[ $list_rc -ne 0 ]] || [[ "$list_out" == *"permission denied"* ]] || [[ "$list_out" == *"403"* ]]; then
-      vaultsh_error "Cannot list path (permission denied or invalid path). Try logging in or use a different nav root."
+      vaultsh_error "Cannot list path (permission denied or invalid path)."
       printf '%s\n' "$list_out" | head -5
+      if vaultsh_offer_login "Session may have expired."; then
+        continue
+      fi
       return 1
     fi
 

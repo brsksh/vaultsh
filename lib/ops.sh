@@ -17,6 +17,25 @@ vaultsh_login_role() {
   fi
 }
 
+# Offer to log in (Reader role). Returns 0 if user logged in successfully, 1 otherwise.
+vaultsh_offer_login() {
+  local reason="${1:-Session missing or expired.}"
+  printf '%s%s%s\n' "$COLOR_WARN" "$reason" "$COLOR_RESET"
+  if vaultsh_confirm "Log in now?" "N"; then
+    vaultsh_login_role "${VAULTSH_READER_ROLE}"
+  else
+    return 1
+  fi
+}
+
+# If no token, offer login. Return 0 if we have a session (or user logged in), 1 if not.
+vaultsh_ensure_session() {
+  if [[ "$(vaultsh_token_state)" != "missing" ]]; then
+    return 0
+  fi
+  vaultsh_offer_login "Not logged in."
+}
+
 vaultsh_show_status() {
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
@@ -41,8 +60,8 @@ vaultsh_session_check() {
   probe_field="${VAULTSH_SESSION_PROBE_FIELD:-}"
 
   if [[ "$(vaultsh_token_state)" == "missing" ]]; then
-    printf '%sNot logged in (no token). Run login first.%s\n' "$COLOR_WARN" "$COLOR_RESET"
-    return 1
+    vaultsh_offer_login "Not logged in (no token)."
+    return $?
   fi
 
   set +e
