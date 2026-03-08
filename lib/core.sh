@@ -6,6 +6,7 @@ vaultsh_init_theme() {
     COLOR_BOLD=$'\033[1m'
     COLOR_DIM=$'\033[2m'
     COLOR_PANEL=$'\033[38;5;239m'
+    COLOR_BORDER=$'\033[38;5;238m'
     COLOR_PRIMARY=$'\033[38;5;223m'
     COLOR_ACCENT=$'\033[38;5;215m'
     COLOR_SUCCESS=$'\033[38;5;151m'
@@ -18,6 +19,7 @@ vaultsh_init_theme() {
     COLOR_BOLD=""
     COLOR_DIM=""
     COLOR_PANEL=""
+    COLOR_BORDER=""
     COLOR_PRIMARY=""
     COLOR_ACCENT=""
     COLOR_SUCCESS=""
@@ -103,7 +105,8 @@ vaultsh_print_header() {
 
   vaultsh_refresh_header_session || true
   if [[ -n "${VAULTSH_HEADER_SESSION_LINE:-}" ]]; then
-    printf '%s%s%s\n\n' "${VAULTSH_HEADER_SESSION_COLOR:-$COLOR_WARN}" "${VAULTSH_HEADER_SESSION_LINE}" "$COLOR_RESET"
+    printf '%s%s%s\n' "$COLOR_BORDER" "────────────────────────────────────────────────────────────────────────────────" "$COLOR_RESET"
+    printf '%s ● %s%s%s\n\n' "${VAULTSH_HEADER_SESSION_COLOR:-$COLOR_WARN}" "${VAULTSH_HEADER_SESSION_LINE}" "$COLOR_RESET"
   fi
 
   case "$token_state" in
@@ -127,19 +130,14 @@ vaultsh_print_header() {
     menu_badge="MENU:classic"
   fi
 
-  printf '%s%sHashiCorp Vault%s%s\n' \
-    "$COLOR_BOLD" "$COLOR_PRIMARY" "$COLOR_RESET"
-  printf '%s%scontext%s     %s%s%s  %s%s%s  %snav root%s %s%s%s\n' \
-    "$COLOR_DIM" "$COLOR_MUTED" "$COLOR_RESET" \
-    "$token_color" "$token_badge" "$COLOR_RESET" \
-    "$COLOR_SECONDARY" "$menu_badge" "$COLOR_RESET" \
-    "$COLOR_MUTED" "$COLOR_RESET" \
-    "$COLOR_ACCENT" "${VAULTSH_NAV_ROOT}" "$COLOR_RESET"
-  printf '%s%saddress%s     %s%s%s\n' \
-    "$COLOR_DIM" "$COLOR_MUTED" "$COLOR_RESET" "$COLOR_BOLD" "$(vaultsh_current_addr)" "$COLOR_RESET"
-  printf '%s-------------------------------------------------------------------------------%s\n' "$COLOR_PANEL" "$COLOR_RESET"
-  printf '%s%sLogin, browse, read/write KV secrets, inspect session, diagnose.%s\n' \
-    "$COLOR_DIM" "$COLOR_MUTED" "$COLOR_RESET"
+  printf '%s%s%s\n' "$COLOR_BORDER" "────────────────────────────────────────────────────────────────────────────────" "$COLOR_RESET"
+  printf '%s%sHashiCorp Vault%s%s\n' "$COLOR_BOLD" "$COLOR_PRIMARY" "$COLOR_RESET"
+  printf '%s%-12s%s %s%s%s\n' "$COLOR_MUTED" "context" "$COLOR_RESET" "$token_color" "$token_badge" "$COLOR_RESET"
+  printf '%s%-12s%s %s%s%s\n' "$COLOR_MUTED" "menu" "$COLOR_RESET" "$COLOR_SECONDARY" "$menu_badge" "$COLOR_RESET"
+  printf '%s%-12s%s %s%s%s\n' "$COLOR_MUTED" "nav root" "$COLOR_RESET" "$COLOR_ACCENT" "${VAULTSH_NAV_ROOT}" "$COLOR_RESET"
+  printf '%s%-12s%s %s%s%s\n' "$COLOR_MUTED" "address" "$COLOR_RESET" "$COLOR_BOLD" "$(vaultsh_current_addr)" "$COLOR_RESET"
+  printf '%s%s%s\n' "$COLOR_BORDER" "────────────────────────────────────────────────────────────────────────────────" "$COLOR_RESET"
+  printf '%s%s%s\n' "$COLOR_DIM" "Login, browse, read/write KV secrets, inspect session, diagnose." "$COLOR_RESET"
   echo
 }
 
@@ -170,14 +168,19 @@ vaultsh_require_command() {
 }
 
 vaultsh_print_panel() {
-  local title="$1"
+  local title="$1" line
   shift
-  printf '%s[%s%s%s]%s\n' "$COLOR_PANEL" "$COLOR_BOLD" "$title" "$COLOR_PANEL" "$COLOR_RESET"
+  printf '%s▎%s [%s%s%s]%s\n' "$COLOR_ACCENT" "$COLOR_RESET" "$COLOR_PANEL" "$title" "$COLOR_RESET" "$COLOR_RESET"
   while (($#)); do
-    printf '  %s%s%s\n' "$COLOR_MUTED" "$1" "$COLOR_RESET"
+    line="$1"
+    if [[ "$line" =~ ^([0-9]+\.)([[:space:]].*)$ ]]; then
+      printf '   %s%s%s%s%s%s\n' "$COLOR_ACCENT" "${BASH_REMATCH[1]}" "$COLOR_RESET" "$COLOR_MUTED" "${BASH_REMATCH[2]}" "$COLOR_RESET"
+    else
+      printf '   %s%s%s\n' "$COLOR_MUTED" "$line" "$COLOR_RESET"
+    fi
     shift
   done
-  printf '%s-------------------------------------------------------------------------------%s\n' "$COLOR_PANEL" "$COLOR_RESET"
+  printf '%s·······················································································%s\n' "$COLOR_BORDER" "$COLOR_RESET"
 }
 
 vaultsh_print_kv() {
