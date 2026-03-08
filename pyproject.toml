@@ -11,6 +11,7 @@ requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = [
     "hvac>=2.1.0",
+    "questionary>=2.0.0",
     "rich>=13.0.0",
 ]
 

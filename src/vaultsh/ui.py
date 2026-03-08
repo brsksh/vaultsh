@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import os
-import shutil
-import subprocess
 import sys
 from typing import Optional
 from rich.console import Console
@@ -16,11 +14,12 @@ VAULTSH_THEME = Theme({
     "panel": Style(color="grey30"),
     "border": Style(color="grey27"),
     "primary": Style(color="rgb(223,175,143)"),
-    "accent": Style(color="rgb(215,135,95)"),
+    "accent": Style(color="rgb(205,100,65)"),   # stronger terracotta so shortcuts stand out
     "success": Style(color="rgb(151,205,151)"),
     "warn": Style(color="rgb(222,184,135)"),
     "error": Style(color="rgb(210,120,120)"),
     "muted": Style(color="grey63"),
+    "separator": Style(color="grey50", dim=True),  # for · in header line2
     "secondary": Style(color="rgb(180,160,120)"),
     "bold": Style(bold=True),
     "dim": Style(dim=True),
@@ -42,15 +41,24 @@ def console() -> Console:
     return _console
 
 
-def has_fzf() -> bool:
-    if not sys.stdin.isatty() or not sys.stdout.isatty():
-        return False
-    return shutil.which("fzf") is not None
-
-
 def clear_screen() -> None:
     if sys.stdout.isatty():
         console().clear()
+
+
+def reset_terminal() -> None:
+    """Restore terminal state on exit so the shell prompt appears correctly (no hang, no raw ANSI)."""
+    if not sys.stdout.isatty():
+        return
+    try:
+        # Exit alternate screen, reset SGR, show cursor
+        out = sys.stdout
+        out.write("\033[?1049l\033[0m\033[?25h\n")
+        out.flush()
+        if sys.stderr is not out:
+            sys.stderr.flush()
+    except Exception:
+        pass
 
 
 def _rule(char: str = "─", width: int = HEADER_WIDTH) -> str:
@@ -99,8 +107,16 @@ def print_header(
     c.print(Text("╭" + top + "╮", style="border"))
     c.print(Text("│", style="border") + Text(prefix, style="bold primary") + Text(session_part + " " * pad, style=session_color) + Text("│", style="border"))
     addr_short = _shorten_addr(address)
-    line2 = f" {addr_short}  ·  nav: {nav_root}  ·  {token_badge}  {menu_badge}"
-    c.print(Text("│", style="border") + Text((line2 + " " * w)[:w], style="dim") + Text("│", style="border"))
+    sep = "  ·  "
+    line2_raw = f" {addr_short}{sep}nav: {nav_root}{sep}{token_badge} {menu_badge}"
+    line2_padded = (line2_raw + " " * w)[:w]
+    line2_text = Text("│", style="border")
+    for i, part in enumerate(line2_padded.split(sep)):
+        if i > 0:
+            line2_text.append(sep, style="separator")
+        line2_text.append(part, style="dim")
+    line2_text.append("│", style="border")
+    c.print(line2_text)
     c.print(Text("╰" + top + "╯", style="border"))
     if show_hint_panels:
         c.print(Text("  Login first; then browse or read. Optional: VAULTSH_NAV_ROOT=kv/ to skip mount list.", style="muted"))
@@ -115,11 +131,14 @@ def print_panel(title: str, *lines: str) -> None:
     if len(title_part) > inner:
         title_part = title_part[: inner - 2] + ".. "
     top_inner = (title_part + "─" * inner)[:inner]
+    c.print()
     c.print(Text("╭" + top_inner + "╮", style="border"))
+    c.print(Text("│" + "─" * inner + "│", style="border"))
     for line in lines:
         content = ("   " + line)[:inner].ljust(inner)
         c.print(Text("│", style="border") + Text(content, style="panel") + Text("│", style="border"))
     c.print(Text("╰" + "─" * inner + "╯", style="border"))
+    c.print()
 
 
 def print_section(label: str, title: Optional[str] = None) -> None:
@@ -158,7 +177,8 @@ def show_guidance(title: str, line_one: str, line_two: str = "") -> None:
 def pause() -> None:
     console().print()
     try:
-        input("Press Enter to continue...")
+        console().print(Text("Press Enter to continue...", style="muted"), end="")
+        input()
     except (EOFError, KeyboardInterrupt):
         pass
 
@@ -202,6 +222,44 @@ def print_preview(label: str, *parts: str) -> None:
     console().print(Text(_rule("─", HEADER_WIDTH), style="panel"))
 
 
+def _use_interactive_menu() -> bool:
+    """True if we can use questionary (TTY, no NO_COLOR forcing raw)."""
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+# Quick actions hint for questionary (ESC = back, ↑↓ = move, etc.)
+_MENU_INSTRUCTION = "↑↓ move  ·  Enter select  ·  ESC back  ·  1-9 / letter shortcut"
+
+
+def _add_esc_back_binding(application):
+    """Add ESC → cancel to the prompt_toolkit Application so .ask() returns None on ESC."""
+    try:
+        from prompt_toolkit.keys import Keys
+        kb = application.key_bindings
+
+        @kb.add(Keys.Escape, eager=True)
+        def _(_event):
+            _event.app.exit(exception=KeyboardInterrupt)
+    except Exception:
+        pass
+
+
+def _questionary_style():
+    """questionary Style matching vaultsh theme (warm primary/accent)."""
+    try:
+        from prompt_toolkit.styles import Style as PtStyle
+        return PtStyle.from_dict({
+            "pointer": "#cd6441 bold",       # accent (matches VAULTSH_THEME accent)
+            "highlighted": "#cd6441",
+            "selected": "#dfaf8f bold",       # primary
+            "question": "bold",
+            "instruction": "italic dim #6b6b6b",
+            "qmark": "#cd6441 bold",
+        })
+    except Exception:
+        return None
+
+
 def select_option(
     prompt_text: str,
     options: list[tuple[str, str, str]],
@@ -210,33 +268,32 @@ def select_option(
     """Options: (key, label, description). Returns key or None on cancel."""
     if not options:
         return None
-    if has_fzf():
-        lines = [f"{key}. {label}\t{desc}" for key, label, desc in options]
-        header = fzf_header_extra or "Move with arrows. Enter confirms. ESC goes back."
+    if _use_interactive_menu():
         try:
-            proc = subprocess.run(
-                ["fzf", "--prompt", f"vaultsh > {prompt_text}: ", "--height=~100%", "--layout=reverse",
-                 "--border", "--no-sort", "--delimiter=\t", "--with-nth=1",
-                 "--preview=printf \"%s\\n\" {2}", "--preview-window=down,4,wrap,border-top",
-                 "--pointer=>", "--marker=+",
-                 "--header", header],
-                input="\n".join(lines),
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+            import questionary
+            choices = [
+                questionary.Choice(title=f"  {key}  {label}", value=key)
+                for key, label, _ in options
+            ]
+            style = _questionary_style()
+            kwargs = {
+                "choices": choices,
+                "use_shortcuts": True,
+                "use_indicator": True,
+                "pointer": "▸",
+                "instruction": _MENU_INSTRUCTION,
+            }
+            if style is not None:
+                kwargs["style"] = style
+            q = questionary.select(prompt_text, **kwargs)
+            _add_esc_back_binding(q.application)
+            ans = q.ask(kbi_msg="")
+            return ans
+        except (KeyboardInterrupt, EOFError):
+            return None
+        except ImportError:
             pass
-        else:
-            if proc.returncode == 0 and proc.stdout:
-                first = proc.stdout.strip().split("\n")[0]
-                key_part = first.split(".", 1)[0].strip()
-                for key, label, _ in options:
-                    if key == key_part or f"{key}." == key_part:
-                        return key
-                return key_part
-        return None
-    # Classic fallback: number or letter, then Enter
+    # Fallback: numbered list + input
     console().print(Text(prompt_text, style="bold"))
     for i, (key, label, desc) in enumerate(options):
         num = str(i + 1) if i < 9 else ""
@@ -264,22 +321,27 @@ def pick_from_list(header: str, options: list[str]) -> Optional[str]:
     """Let user pick one option; return selected string or None."""
     if not options:
         return None
-    if has_fzf():
+    if _use_interactive_menu():
         try:
-            proc = subprocess.run(
-                ["fzf", "--prompt", f"{header}> ", "--height=~50%", "--layout=reverse",
-                 "--border", "--no-sort", "--header", header],
-                input="\n".join(options),
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+            import questionary
+            choices = [questionary.Choice(title=opt, value=opt) for opt in options]
+            style = _questionary_style()
+            kwargs = {
+                "choices": choices,
+                "use_shortcuts": True,
+                "use_indicator": True,
+                "pointer": "▸",
+                "instruction": _MENU_INSTRUCTION,
+            }
+            if style is not None:
+                kwargs["style"] = style
+            q = questionary.select(header, **kwargs)
+            _add_esc_back_binding(q.application)
+            return q.ask(kbi_msg="")
+        except (KeyboardInterrupt, EOFError):
+            return None
+        except ImportError:
             pass
-        else:
-            if proc.returncode == 0 and proc.stdout:
-                return proc.stdout.strip().split("\n")[0]
-        return None
     console().print(Text(header, style="bold"))
     for i, opt in enumerate(options, 1):
         console().print(Text(f"  [{i}] ", style="accent") + opt)
@@ -299,5 +361,6 @@ def pick_from_list(header: str, options: list[str]) -> Optional[str]:
     return None
 
 
-def print_kv(label: str, value: str) -> None:
-    console().print(Text(f"{label:<12}", style="muted") + Text(value, style="bold"))
+def print_kv(label: str, value: str, label_width: int = 12) -> None:
+    display_label = (label[: label_width - 1] + "…") if len(label) > label_width else label
+    console().print(Text(f"{display_label:<{label_width}}", style="muted") + Text(value, style="bold"))

@@ -177,6 +177,6 @@ def run_write_interactive(cfg: dict[str, Any]) -> None:
         current[field] = value
         client.secrets.kv.v2.create_or_update_secret(path=rel_path, secret=current, mount_point=mount)
         info("Write succeeded.")
-    except Exception as e:
-        error(f"Write failed: {e}")
+    except Exception:
+        error("Write failed.")
     pause()

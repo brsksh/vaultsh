@@ -52,5 +52,13 @@ else
   echo "Config: $CONFIG_FILE (already exists)"
 fi
 
+# ensure ~/.vault-token has restrictive permissions if it exists (created by vault login)
+VAULT_TOKEN_FILE="${HOME}/.vault-token"
+if [[ -f "$VAULT_TOKEN_FILE" ]]; then
+  if chmod 600 "$VAULT_TOKEN_FILE" 2>/dev/null; then
+    echo "Permissions set: ~/.vault-token (600)"
+  fi
+fi
+
 echo ""
 echo "Done. Run: vaultsh   (or .venv/bin/vaultsh)"

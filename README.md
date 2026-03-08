@@ -29,7 +29,7 @@ A standalone, reusable CLI wrapper around HashiCorp Vault for interactive use. I
 - **Optional vault status and token lookup** (subprocess).
 - **Diagnostics** — connectivity, token, and a sample secret read.
 - **Config file** (Key=Value) for Vault address, roles, optional session-probe path, and nav root; same format as before (`~/.config/vaultsh/config` or `vaultsh.conf` next to the app).
-- **Optional fzf** for menus; falls back to numbered prompts.
+- **Menus** — arrow keys to move, Enter to select, ESC to go back; 1–9 or letter as shortcut (no external tools).
 
 ---
 
@@ -37,7 +37,6 @@ A standalone, reusable CLI wrapper around HashiCorp Vault for interactive use. I
 
 - **Python 3.9+**
 - [HashiCorp Vault CLI](https://developer.hashicorp.com/vault/docs/install) on your `PATH` (used for OIDC login and for `vault status` / `vault token lookup` in the menu)
-- Optional: [fzf](https://github.com/junegunn/fzf) for interactive menus
 
 ---
 
@@ -109,7 +108,9 @@ See `vaultsh --help` for details.
 
 ## Security
 
-vaultsh does not store secrets; it forwards them to the Vault API (hvac) or the Vault CLI (OIDC login, status, token lookup). The **Write** action sends the value via the Vault API; be aware that terminal history can capture input unless disabled.
+vaultsh does not store secrets; it forwards them to the Vault API (hvac) or the Vault CLI (OIDC login, status, token lookup). The **Write** action sends the value via the Vault API; be aware that terminal history can capture path/field input unless disabled.
+
+- **Token file:** If you use `~/.vault-token` (written by `vault login`), ensure restrictive permissions, e.g. `chmod 600 ~/.vault-token`, so other users cannot read it.
 
 ---
 

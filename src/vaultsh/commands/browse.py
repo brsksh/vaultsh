@@ -6,7 +6,6 @@ from typing import Any, Optional
 from vaultsh import vault_client
 from vaultsh.ui import (
     error,
-    has_fzf,
     info,
     pause,
     pick_from_list,

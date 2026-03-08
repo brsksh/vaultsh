@@ -19,7 +19,7 @@ def _parse_config_file(path: Path) -> Dict[str, str]:
             key = key.strip()
             value = value.strip()
             if value.startswith('"') and value.endswith('"'):
-                value = value[1:-1].replace('\\"', '"')
+                value = value[1:-1].replace("\\\\", "\\").replace('\\"', '"')
             elif value.startswith("'") and value.endswith("'"):
                 value = value[1:-1]
             if value.startswith("${") and ":-" in value and value.endswith("}"):

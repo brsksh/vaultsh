@@ -1,10 +1,13 @@
 """CLI entry: vaultsh [--help] [session-check|read|browse] [options]; no subcommand → main menu."""
+import atexit
 import shutil
 import sys
 from pathlib import Path
 
 from . import config as config_module
-from .ui import error
+from .ui import error, reset_terminal
+
+atexit.register(reset_terminal)
 
 
 def main() -> None:

@@ -8,7 +8,6 @@ from vaultsh import vault_client
 from vaultsh.ui import (
     clear_screen,
     console,
-    has_fzf,
     pause,
     print_header,
     print_panel,
@@ -90,7 +89,7 @@ def run_main_menu(cfg: dict[str, Any]) -> None:
         state = vault_client.token_state()
         token_badge = f"TOKEN:{state}" if state != "missing" else "TOKEN:missing"
         token_style = "success" if state == "env" else ("accent" if state == "file" else "warn")
-        menu_badge = "MENU:fzf" if has_fzf() else "MENU:classic"
+        menu_badge = "keys"
         nav_root = (cfg.get("VAULTSH_NAV_ROOT") or "").strip() or "(all mounts)"
         addr = cfg.get("VAULT_ADDR") or cfg.get("VAULTSH_ADDR") or "https://127.0.0.1:8200"
 
@@ -129,7 +128,6 @@ def run_main_menu(cfg: dict[str, Any]) -> None:
             continue
         if choice == "3":
             browse.run_browse(cfg, pick_mode=False)
-            pause()
             continue
         if choice == "4":
             read_write.run_read_interactive(cfg)
@@ -178,7 +176,6 @@ def _handle_palette(cfg: dict[str, Any]) -> None:
         return
     if choice == "3":
         browse.run_browse(cfg, pick_mode=False)
-        pause()
         return
     if choice == "4":
         read_write.run_read_interactive(cfg)

@@ -10,13 +10,15 @@ from vaultsh.ui import print_section
 
 
 def _kv_probe(client: Any, path: str, field: str, mount_point: str = "secret") -> tuple[int, str]:
+    """Return (0, '(value present)') on success to avoid leaking secret data; (1, error_msg) on failure."""
     try:
         if path.startswith(mount_point + "/"):
             path = path[len(mount_point) + 1 :]
         r = client.secrets.kv.v2.read_secret_version(path=path.rstrip("/"), mount_point=mount_point)
         data = (r.get("data") or {}).get("data") or r.get("data") or {}
-        val = data.get(field, "")
-        return 0, str(val)
+        if field not in data:
+            return 1, "field not found"
+        return 0, "(value present)"
     except Exception as e:
         return 1, str(e)
 

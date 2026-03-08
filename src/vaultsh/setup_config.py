@@ -6,6 +6,11 @@ import sys
 from pathlib import Path
 
 
+def _escape_config_value(value: str) -> str:
+    """Escape value for use inside double quotes in config (avoid injection / broken file)."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def main() -> None:
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")))
     config_dir = config_home / "vaultsh"
@@ -31,17 +36,26 @@ def main() -> None:
         probe_field = input("VAULTSH_SESSION_PROBE_FIELD (optional): ").strip() if probe_path else ""
 
     lines = [
-        f'VAULTSH_ADDR="{addr}"',
-        f'VAULTSH_READER_ROLE="{reader}"',
-        f'VAULTSH_OPERATOR_ROLE="{operator}"',
-        f'VAULTSH_NAV_ROOT="{nav_root}"',
+        f'VAULTSH_ADDR="{_escape_config_value(addr)}"',
+        f'VAULTSH_READER_ROLE="{_escape_config_value(reader)}"',
+        f'VAULTSH_OPERATOR_ROLE="{_escape_config_value(operator)}"',
+        f'VAULTSH_NAV_ROOT="{_escape_config_value(nav_root)}"',
     ]
     if probe_path:
-        lines.append(f'VAULTSH_SESSION_PROBE_PATH="{probe_path}"')
+        lines.append(f'VAULTSH_SESSION_PROBE_PATH="{_escape_config_value(probe_path)}"')
         if probe_field:
-            lines.append(f'VAULTSH_SESSION_PROBE_FIELD="{probe_field}"')
+            lines.append(f'VAULTSH_SESSION_PROBE_FIELD="{_escape_config_value(probe_field)}"')
     config_file.write_text("\n".join(lines) + "\n")
     print(f"Wrote {config_file}")
+
+    # ensure ~/.vault-token has restrictive permissions if it exists (created by vault login)
+    vault_token_file = Path.home() / ".vault-token"
+    if vault_token_file.is_file():
+        try:
+            vault_token_file.chmod(0o600)
+            print("Permissions set: ~/.vault-token (600)")
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":
