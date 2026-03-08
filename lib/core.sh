@@ -203,7 +203,7 @@ vaultsh_print_panel() {
       printf '%s│%s   %s%s%s%s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "${BASH_REMATCH[1]}" "$COLOR_RESET" "$COLOR_MUTED" "${BASH_REMATCH[2]}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     else
       pad=$(( VAULTSH_HEADER_WIDTH - 2 - 3 - ${#line} )); [[ $pad -lt 0 ]] && pad=0
-      printf '%s│%s   %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_MUTED" "$line" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
+      printf '%s│%s   %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_MUTED" "$line" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     fi
     shift
   done
