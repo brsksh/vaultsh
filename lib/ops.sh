@@ -5,7 +5,7 @@ vaultsh_login_role() {
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
   errfile="$(mktemp)" || { vault login -method=oidc "role=${role}"; return $?; }
-  trap 'rm -f "$errfile"' RETURN
+  trap 'rm -f "${errfile:-}"' RETURN
   vault login -method=oidc "role=${role}" 2>&1 | tee "$errfile"
   rc=${PIPESTATUS[0]}
   if (( rc != 0 )); then
