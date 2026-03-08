@@ -118,7 +118,7 @@ vaultsh_print_header() {
     pad=$(( VAULTSH_HEADER_WIDTH - 5 - ${#VAULTSH_HEADER_SESSION_LINE} )) || true
     [[ $pad -lt 0 ]] && pad=0
     printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
-    printf '%s│%s ● %s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$session_color" "${VAULTSH_HEADER_SESSION_LINE}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
+    printf '%s│%s ● %s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$session_color" "${VAULTSH_HEADER_SESSION_LINE}" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     printf '%s╰%s╯%s\n\n' "$COLOR_BORDER" "$bot_rule" "$COLOR_RESET"
   fi
 
