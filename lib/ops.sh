@@ -23,9 +23,9 @@ vaultsh_offer_login() {
   printf '%s%s%s\n' "$COLOR_WARN" "$reason" "$COLOR_RESET"
   if vaultsh_confirm "Log in now?" "N"; then
     vaultsh_login_role "${VAULTSH_READER_ROLE}"
-  else
-    return 1
+    return $?
   fi
+  return 1
 }
 
 # If no token, offer login. Return 0 if we have a session (or user logged in), 1 if not.
