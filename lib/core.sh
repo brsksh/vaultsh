@@ -146,15 +146,15 @@ vaultsh_print_header() {
   local addr
   addr="$(vaultsh_current_addr)"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
-  pad=$(( VAULTSH_HEADER_WIDTH - 16 )); [[ $pad -lt 0 ]] && pad=0
+  pad=$(( VAULTSH_HEADER_WIDTH - 17 )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_PRIMARY" "HashiCorp Vault" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
-  pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#token_badge} )); [[ $pad -lt 0 ]] && pad=0
+  pad=$(( VAULTSH_HEADER_WIDTH - 14 - ${#token_badge} )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "context" "$COLOR_RESET" "$token_color" "$token_badge" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
-  pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#menu_badge} )); [[ $pad -lt 0 ]] && pad=0
+  pad=$(( VAULTSH_HEADER_WIDTH - 14 - ${#menu_badge} )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "menu" "$COLOR_RESET" "$COLOR_SECONDARY" "$menu_badge" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
-  pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#VAULTSH_NAV_ROOT} )); [[ $pad -lt 0 ]] && pad=0
+  pad=$(( VAULTSH_HEADER_WIDTH - 14 - ${#VAULTSH_NAV_ROOT} )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "nav root" "$COLOR_RESET" "$COLOR_ACCENT" "${VAULTSH_NAV_ROOT}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
-  pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#addr} )); [[ $pad -lt 0 ]] && pad=0
+  pad=$(( VAULTSH_HEADER_WIDTH - 14 - ${#addr} )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "address" "$COLOR_RESET" "$COLOR_BOLD" "$addr" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   printf '%s╰%s╯%s\n' "$COLOR_BORDER" "$bot_rule" "$COLOR_RESET"
   printf '%s%s%s\n' "$COLOR_DIM" "  Login, browse, read/write KV secrets, inspect session, diagnose." "$COLOR_RESET"
