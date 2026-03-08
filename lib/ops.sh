@@ -67,13 +67,13 @@ vaultsh_refresh_header_session() {
   VAULTSH_HEADER_SESSION_COLOR="${COLOR_WARN}"
 
   if [[ "$(vaultsh_token_state)" == "missing" ]]; then
-    VAULTSH_HEADER_SESSION_LINE="Session: nicht eingeloggt"
+    VAULTSH_HEADER_SESSION_LINE="Session: not logged in"
     VAULTSH_HEADER_SESSION_TS=$now
     return 0
   fi
 
   if ! vaultsh_require_command vault 2>/dev/null; then
-    VAULTSH_HEADER_SESSION_LINE="Session: ? (vault nicht gefunden)"
+    VAULTSH_HEADER_SESSION_LINE="Session: ? (vault not found)"
     VAULTSH_HEADER_SESSION_TS=$now
     return 0
   fi
@@ -98,9 +98,9 @@ vaultsh_refresh_header_session() {
       expire_time="${expire_time/T/ }"
       expire_time="${expire_time%%.*}"
       expire_time="${expire_time%%Z}"
-      VAULTSH_HEADER_SESSION_LINE="Session: aktiv (bis ${expire_time})"
+      VAULTSH_HEADER_SESSION_LINE="Session: active (until ${expire_time})"
     else
-      VAULTSH_HEADER_SESSION_LINE="Session: aktiv"
+      VAULTSH_HEADER_SESSION_LINE="Session: active"
     fi
     VAULTSH_HEADER_SESSION_COLOR="${COLOR_SUCCESS}"
     VAULTSH_HEADER_SESSION_TS=$now
@@ -111,14 +111,14 @@ vaultsh_refresh_header_session() {
   probe_field="${VAULTSH_SESSION_PROBE_FIELD:-}"
   if [[ -n "$probe_path" && -n "$probe_field" ]]; then
     if vault kv get "-field=${probe_field}" "${probe_path}" >/dev/null 2>&1; then
-      VAULTSH_HEADER_SESSION_LINE="Session: aktiv (KV)"
+      VAULTSH_HEADER_SESSION_LINE="Session: active (KV)"
       VAULTSH_HEADER_SESSION_COLOR="${COLOR_SUCCESS}"
       VAULTSH_HEADER_SESSION_TS=$now
       return 0
     fi
   fi
 
-  VAULTSH_HEADER_SESSION_LINE="Session: abgelaufen oder kein Zugriff"
+  VAULTSH_HEADER_SESSION_LINE="Session: expired or no access"
   VAULTSH_HEADER_SESSION_TS=$now
   return 0
 }
