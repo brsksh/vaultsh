@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Note: With set -e, avoid (( )) in conditions — use [[ $x -eq 0 ]] etc. so "false" doesn't exit.
 
 # Lists direct children at the given path (must end with /). Output: one key per line.
 vaultsh_nav_list() {
@@ -8,7 +9,7 @@ vaultsh_nav_list() {
   if command -v jq >/dev/null 2>&1; then
     raw="$(vault kv list -format=json "$path" 2>&1)"
     rc=$?
-    if (( rc != 0 )); then
+    if [[ $rc -ne 0 ]]; then
       printf '%s\n' "$raw"
       return "$rc"
     fi
@@ -22,7 +23,7 @@ vaultsh_nav_list() {
   else
     raw="$(vault kv list -format=table "$path" 2>&1)"
     rc=$?
-    if (( rc != 0 )); then
+    if [[ $rc -ne 0 ]]; then
       printf '%s\n' "$raw"
       return "$rc"
     fi
@@ -111,11 +112,13 @@ vaultsh_nav_run() {
       return 0
     fi
 
+    set +e
     if command -v jq >/dev/null 2>&1; then
       list_out="$(jq -r '(.data.keys // .) | .[]?' "${list_tmp}" 2>/dev/null)"
     else
       list_out="$(tail -n +3 "${list_tmp}" | while IFS= read -r line; do [[ -z "${line// /}" ]] && continue; printf '%s\n' "$line"; done)"
     fi
+    set -e
 
     keys=()
     while IFS= read -r line; do
@@ -139,14 +142,14 @@ vaultsh_nav_run() {
       fi
     done
 
-    if (( ${#options[@]} == 0 )); then
+    if [[ ${#options[@]} -eq 0 ]]; then
       vaultsh_info "This path is empty or you have no list permission. Use .. to go up or press Enter to exit."
       read -r -p "Press Enter to return to menu..." _
       return 0
     fi
 
     selected=""
-    if (( HAS_FZF == 1 )); then
+    if [[ ${HAS_FZF:-0} -eq 1 ]]; then
       local fzf_input=""
       for line in "${options_display[@]}"; do
         IFS='|' read -r key label desc <<< "$line"
@@ -167,7 +170,7 @@ vaultsh_nav_run() {
         --header='Enter: open/read. ESC: back to menu.')"
       local fzf_rc=$?
       set -e
-      if (( fzf_rc != 0 )) || [[ -z "$selected" ]]; then
+      if [[ $fzf_rc -ne 0 ]] || [[ -z "$selected" ]]; then
         return 0
       fi
       selected="${selected%%	*}"
@@ -188,7 +191,7 @@ vaultsh_nav_run() {
       # Map number to key: if selected is a positive integer, use options[selected-1]
       if [[ "$selected" =~ ^[0-9]+$ ]]; then
         idx=$((selected - 1))
-        if (( idx >= 0 && idx < ${#options[@]} )); then
+        if [[ $idx -ge 0 ]] && [[ $idx -lt ${#options[@]} ]]; then
           selected="${options[$idx]}"
         fi
       fi
@@ -211,7 +214,7 @@ vaultsh_nav_run() {
     fi
 
     # Leaf secret selected
-    if (( pick_mode == 1 )); then
+    if [[ $pick_mode -eq 1 ]]; then
       VAULTSH_PICKED_PATH="$full_path"
       return 0
     fi
