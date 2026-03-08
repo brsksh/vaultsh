@@ -80,6 +80,12 @@ vaultsh_nav_run() {
     return 1
   fi
 
+  # Ensure token is in environment for subshells (e.g. vault kv list in vaultsh_nav_list)
+  if [[ -z "${VAULT_TOKEN:-}" ]] && [[ -f "${HOME}/.vault-token" ]]; then
+    VAULT_TOKEN="$(cat "${HOME}/.vault-token")"
+    export VAULT_TOKEN
+  fi
+
   while true; do
     vaultsh_section "Browse" "Browse: ${current_path}"
     set +e
