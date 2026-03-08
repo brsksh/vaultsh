@@ -114,10 +114,11 @@ vaultsh_print_header() {
 
   if [[ -n "${VAULTSH_HEADER_SESSION_LINE:-}" ]]; then
     session_color="${VAULTSH_HEADER_SESSION_COLOR:-$COLOR_WARN}"
-    pad=$(( VAULTSH_HEADER_WIDTH - 5 - ${#VAULTSH_HEADER_SESSION_LINE} ))
+    pad=0
+    pad=$(( VAULTSH_HEADER_WIDTH - 5 - ${#VAULTSH_HEADER_SESSION_LINE} )) || true
     [[ $pad -lt 0 ]] && pad=0
     printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
-    printf '%s│%s ● %s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$session_color" "${VAULTSH_HEADER_SESSION_LINE}" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+    printf '%s│%s ● %s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$session_color" "${VAULTSH_HEADER_SESSION_LINE}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     printf '%s╰%s╯%s\n\n' "$COLOR_BORDER" "$bot_rule" "$COLOR_RESET"
   fi
 
@@ -146,15 +147,15 @@ vaultsh_print_header() {
   addr="$(vaultsh_current_addr)"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 16 )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_PRIMARY" "HashiCorp Vault" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_PRIMARY" "HashiCorp Vault" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#token_badge} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "context" "$COLOR_RESET" "$token_color" "$token_badge" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "context" "$COLOR_RESET" "$token_color" "$token_badge" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#menu_badge} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "menu" "$COLOR_RESET" "$COLOR_SECONDARY" "$menu_badge" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "menu" "$COLOR_RESET" "$COLOR_SECONDARY" "$menu_badge" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#VAULTSH_NAV_ROOT} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "nav root" "$COLOR_RESET" "$COLOR_ACCENT" "${VAULTSH_NAV_ROOT}" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "nav root" "$COLOR_RESET" "$COLOR_ACCENT" "${VAULTSH_NAV_ROOT}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#addr} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "address" "$COLOR_RESET" "$COLOR_BOLD" "$addr" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "address" "$COLOR_RESET" "$COLOR_BOLD" "$addr" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   printf '%s╰%s╯%s\n' "$COLOR_BORDER" "$bot_rule" "$COLOR_RESET"
   printf '%s%s%s\n' "$COLOR_DIM" "  Login, browse, read/write KV secrets, inspect session, diagnose." "$COLOR_RESET"
   echo
@@ -194,15 +195,15 @@ vaultsh_print_panel() {
   panel_rule="$(printf '%*s' "$VAULTSH_HEADER_WIDTH" "" | tr ' ' '─')"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$panel_rule" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 5 - ${#title} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s ▎ %s[%s%s%s]%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "$COLOR_PANEL" "$title" "$COLOR_RESET" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s ▎ %s[%s%s%s]%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "$COLOR_PANEL" "$title" "$COLOR_RESET" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   while (($#)); do
     line="$1"
     if [[ "$line" =~ ^([0-9]+\.)([[:space:]].*)$ ]]; then
       pad=$(( VAULTSH_HEADER_WIDTH - 2 - 3 - ${#BASH_REMATCH[1]} - ${#BASH_REMATCH[2]} )); [[ $pad -lt 0 ]] && pad=0
-      printf '%s│%s   %s%s%s%s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "${BASH_REMATCH[1]}" "$COLOR_RESET" "$COLOR_MUTED" "${BASH_REMATCH[2]}" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+      printf '%s│%s   %s%s%s%s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "${BASH_REMATCH[1]}" "$COLOR_RESET" "$COLOR_MUTED" "${BASH_REMATCH[2]}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     else
       pad=$(( VAULTSH_HEADER_WIDTH - 2 - 3 - ${#line} )); [[ $pad -lt 0 ]] && pad=0
-      printf '%s│%s   %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_MUTED" "$line" "$COLOR_RESET" "$pad" "" "$COLOR_BORDER" "$COLOR_RESET"
+      printf '%s│%s   %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_MUTED" "$line" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     fi
     shift
   done
