@@ -1,0 +1,19 @@
+# vaultsh example configuration
+#
+# Copy to vaultsh.conf next to the script, or to ~/.config/vaultsh/config
+# Environment variables override these values.
+
+# Vault server address (used as VAULT_ADDR for the vault CLI)
+VAULTSH_ADDR="${VAULTSH_ADDR:-https://vault.example.com}"
+
+# OIDC login roles
+VAULTSH_READER_ROLE="${VAULTSH_READER_ROLE:-reader}"
+VAULTSH_OPERATOR_ROLE="${VAULTSH_OPERATOR_ROLE:-operator}"
+
+# Start path for Browse / Navigate (must end with / for vault kv list)
+VAULTSH_NAV_ROOT="${VAULTSH_NAV_ROOT:-secret/}"
+
+# Optional: path and field used by session check when token lookup returns 403
+# Leave unset to skip KV fallback (session check will only use token lookup).
+# VAULTSH_SESSION_PROBE_PATH="${VAULTSH_SESSION_PROBE_PATH:-}"
+# VAULTSH_SESSION_PROBE_FIELD="${VAULTSH_SESSION_PROBE_FIELD:-}"
