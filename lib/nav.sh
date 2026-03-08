@@ -66,7 +66,7 @@ vaultsh_nav_run() {
   fi
 
   while true; do
-    vaultsh_section "Browse: ${current_path}"
+    vaultsh_section "Browse" "Browse: ${current_path}"
     set +e
     list_out="$(vaultsh_nav_list "$current_path" 2>&1)"
     list_rc=$?
@@ -180,7 +180,7 @@ vaultsh_nav_run() {
     fi
 
     # Read secret at full_path
-    vaultsh_section "Secret: ${full_path}"
+    vaultsh_section "Secret" "Secret: ${full_path}"
     set +e
     vault kv get "$full_path" 2>&1
     set -e

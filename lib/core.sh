@@ -167,10 +167,11 @@ vaultsh_print_header() {
   echo
 }
 
+# $1 = label inside brackets; optional $2 = full title (defaults to $1)
 vaultsh_section() {
   echo
-  printf '%s[%s]%s %s%s%s\n' \
-    "$COLOR_ACCENT" "$COLOR_PRIMARY" "$COLOR_RESET" "$COLOR_BOLD" "$1" "$COLOR_RESET"
+  printf '%s[%s%s%s]%s %s%s%s\n' \
+    "$COLOR_ACCENT" "$COLOR_PRIMARY" "$1" "$COLOR_RESET" "$COLOR_BOLD" "${2:-$1}" "$COLOR_RESET"
 }
 
 vaultsh_info() {
