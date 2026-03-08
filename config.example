@@ -10,8 +10,9 @@ VAULTSH_ADDR="${VAULTSH_ADDR:-https://vault.example.com}"
 VAULTSH_READER_ROLE="${VAULTSH_READER_ROLE:-reader}"
 VAULTSH_OPERATOR_ROLE="${VAULTSH_OPERATOR_ROLE:-operator}"
 
-# Start path for Browse / Navigate (must end with / for vault kv list)
-VAULTSH_NAV_ROOT="${VAULTSH_NAV_ROOT:-secret/}"
+# Start path for Browse (optional). If empty/unset, Browse shows all KV mounts to choose from.
+# If set, must end with /, e.g. kv/ or secret/
+# VAULTSH_NAV_ROOT="${VAULTSH_NAV_ROOT:-kv/}"
 
 # Optional: path and field used by session check when token lookup returns 403
 # Leave unset to skip KV fallback (session check will only use token lookup).

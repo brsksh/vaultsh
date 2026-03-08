@@ -136,7 +136,7 @@ Or create/edit the file manually as Key=Value, e.g.:
 VAULTSH_ADDR="https://vault.example.com"
 VAULTSH_READER_ROLE="reader"
 VAULTSH_OPERATOR_ROLE="operator"
-VAULTSH_NAV_ROOT="secret/"
+# VAULTSH_NAV_ROOT="kv/"   # optional; leave unset to list all KV mounts in Browse
 # Optional: for session check when token lookup returns 403
 # VAULTSH_SESSION_PROBE_PATH="secret/probe"
 # VAULTSH_SESSION_PROBE_FIELD="ok"
@@ -147,7 +147,7 @@ VAULTSH_NAV_ROOT="secret/"
 | `VAULTSH_ADDR` | Vault server address (sets `VAULT_ADDR` for the vault CLI) | `https://127.0.0.1:8200` |
 | `VAULTSH_READER_ROLE` | OIDC role for read-only use | `reader` |
 | `VAULTSH_OPERATOR_ROLE` | OIDC role for writes/maintenance | `operator` |
-| `VAULTSH_NAV_ROOT` | Start path for Browse (must end with `/`), e.g. `secret/` or `kv/` | `secret/` |
+| `VAULTSH_NAV_ROOT` | Optional. If set, Browse starts in this mount (e.g. `kv/`, `secret/`). If empty, Browse lists all KV mounts. | (empty = show all) |
 | `VAULTSH_SESSION_PROBE_PATH` | Optional path for session check KV fallback | (empty) |
 | `VAULTSH_SESSION_PROBE_FIELD` | Optional field for that probe | (empty) |
 

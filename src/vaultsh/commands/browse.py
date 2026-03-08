@@ -17,6 +17,25 @@ from vaultsh.ui import console
 from vaultsh.ui import Text
 
 
+def _get_kv_mounts(client: Any) -> list[str]:
+    """Return list of KV secrets engine mount names (e.g. ['kv', 'secret']). Requires sys/mounts read."""
+    try:
+        data = client.sys.list_mounted_secrets_engines()
+        mounts = (data.get("data") or data) or {}
+        out = []
+        for path, info in mounts.items():
+            if not isinstance(info, dict):
+                continue
+            mount_type = (info.get("type") or "").strip().lower()
+            if mount_type in ("kv", "kv-v2"):
+                name = (path or "").rstrip("/")
+                if name:
+                    out.append(name)
+        return sorted(out)
+    except Exception:
+        return []
+
+
 def _parse_nav_root(nav_root: str) -> tuple[str, str]:
     """Return (mount_point, path). e.g. 'secret/' -> ('secret', ''), 'secret/team/' -> ('secret', 'team/')."""
     s = (nav_root or "secret/").strip().rstrip("/") + "/"
@@ -114,53 +133,82 @@ def _read_secret(client: Any, mount_point: str, path: str) -> Optional[dict]:
 
 
 def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool = False) -> Optional[str]:
-    """Run browse loop. If pick_mode, return selected secret path or None. Otherwise return None."""
+    """Run browse loop. Without VAULTSH_NAV_ROOT: show KV mounts first, then browse. With: start in that mount."""
     argv = argv or []
-    nav_root = (cfg.get("VAULTSH_NAV_ROOT") or "secret/").strip()
-    if not nav_root.endswith("/"):
-        nav_root += "/"
-    mount_point, root_path = _parse_nav_root(cfg.get("VAULTSH_NAV_ROOT") or "secret/")
-    current_path = root_path
-
     token = vault_client.get_token()
     if not token:
         error("Not logged in. Use Login from the menu first.")
         return None
     client = vault_client.ensure_client(cfg)
 
+    nav_root_cfg = (cfg.get("VAULTSH_NAV_ROOT") or "").strip()
+    if nav_root_cfg:
+        mount_point: Optional[str]
+        mount_point, root_path = _parse_nav_root(nav_root_cfg)
+        current_path = root_path
+    else:
+        mount_point = None
+        root_path = ""
+        current_path = ""
+
     while True:
+        # Mount selection (no fixed nav root)
+        if mount_point is None:
+            mounts = _get_kv_mounts(client)
+            if not mounts:
+                error("No KV secrets engines found (or no sys/mounts permission).")
+                info("Ensure your token can read sys/mounts, or set VAULTSH_NAV_ROOT to a mount (e.g. kv/).")
+                select_option("Path", [("b", "Back to menu", "Return to main menu.")], fzf_header_extra="Press Enter to return.")
+                return None
+            options = [(m, f"{m}/", f"Browse KV mount {m}/") for m in mounts]
+            options.append(("b", "Back to menu", "Return to main menu."))
+            choice = select_option("KV mount", options, fzf_header_extra="Select a mount to browse.")
+            if not choice or choice == "b":
+                return None
+            mount_point = choice
+            current_path = ""
+            root_path = ""
+            continue
+
         full = _full_path(mount_point, current_path)
         print_section("Browse", f"Browse: {full}")
 
         keys = _list_keys(client, mount_point, current_path.rstrip("/") if current_path else "")
-        options: list[tuple[str, str, str]] = []
-        option_keys: list[str] = []
-        if _can_go_up(current_path, root_path):
-            options.append(("..", "..", "Go up one level."))
-            option_keys.append("..")
+        options_list: list[tuple[str, str, str]] = []
+        if current_path:
+            options_list.append(("..", "..", "Go up one level."))
+        else:
+            options_list.append(("..", "..", "Back to mount list."))
         for k in keys:
             if k.endswith("/"):
-                options.append((k, f"Open {k}", "List contents of this path."))
-                option_keys.append(k)
+                options_list.append((k, f"Open {k}", "List contents of this path."))
             else:
-                options.append((k, f"Read secret {k}", "Read this secret."))
-                option_keys.append(k)
+                options_list.append((k, f"Read secret {k}", "Read this secret."))
 
-        if not options:
+        if not keys:
             info("This path is empty or you have no list permission.")
-            info("Check VAULTSH_NAV_ROOT and your policy's list capability.")
-            select_option("Path", [("b", "Back to menu", "Return to main menu.")], fzf_header_extra="Press Enter to return.")
-            return None
+            choice = select_option(
+                "Path",
+                [("..", "Back to mount list", "Choose another KV mount."), ("b", "Back to menu", "Return to main menu.")],
+                fzf_header_extra="Press Enter to return.",
+            )
+            if not choice or choice == "b":
+                return None
+            if choice == "..":
+                mount_point = None
+            continue
 
-        choice = select_option("Path", options, fzf_header_extra="Enter: open/read. ESC: back to menu.")
+        choice = select_option("Path", options_list, fzf_header_extra="Enter: open/read. ESC: back.")
         if not choice:
             return None
 
         if choice == "..":
-            current_path = _path_up(current_path, root_path)
+            if current_path:
+                current_path = _path_up(current_path, root_path)
+            else:
+                mount_point = None
             continue
 
-        # Normalize: if user chose a key that exists as folder (with /), use it
         key = choice
         if not key.endswith("/") and (key + "/") in keys:
             key = key + "/"
@@ -170,7 +218,6 @@ def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool
             current_path = full_path if full_path.endswith("/") else full_path + "/"
             continue
 
-        # Leaf secret
         if pick_mode:
             return _full_path(mount_point, full_path)
 
@@ -183,7 +230,6 @@ def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool
             error("Could not read secret.")
         console().print()
         pause()
-        # Stay at same path
 
 
 def run_browse_pick_path(cfg: dict[str, Any]) -> Optional[str]:

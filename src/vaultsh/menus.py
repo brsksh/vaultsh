@@ -91,7 +91,7 @@ def run_main_menu(cfg: dict[str, Any]) -> None:
         token_badge = f"TOKEN:{state}" if state != "missing" else "TOKEN:missing"
         token_style = "success" if state == "env" else ("accent" if state == "file" else "warn")
         menu_badge = "MENU:fzf" if has_fzf() else "MENU:classic"
-        nav_root = cfg.get("VAULTSH_NAV_ROOT") or "secret/"
+        nav_root = (cfg.get("VAULTSH_NAV_ROOT") or "").strip() or "(all mounts)"
         addr = cfg.get("VAULT_ADDR") or cfg.get("VAULTSH_ADDR") or "https://127.0.0.1:8200"
 
         print_header(session_line, session_style, token_badge, token_style, menu_badge, nav_root, addr)
