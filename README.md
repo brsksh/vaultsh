@@ -110,7 +110,7 @@ See `vaultsh --help` for details.
 
 vaultsh does not store secrets; it forwards them to the Vault API (hvac) or the Vault CLI (OIDC login, status, token lookup). The **Write** action sends the value via the Vault API; be aware that terminal history can capture path/field input unless disabled.
 
-- **Token file:** If you use `~/.vault-token` (written by `vault login`), ensure restrictive permissions, e.g. `chmod 600 ~/.vault-token`, so other users cannot read it.
+- **Token file:** If you use `~/.vault-token` (written by `vault login`), ensure restrictive permissions, e.g. `chmod 600 ~/.vault-token`, so other users cannot read it. Running `./setup.sh` or `vaultsh-setup` will set `~/.vault-token` to mode 600 automatically when the file exists.
 
 ---
 
