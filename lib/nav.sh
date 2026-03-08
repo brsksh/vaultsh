@@ -1,32 +1,16 @@
 #!/usr/bin/env bash
-# Note: With set -e, avoid (( )) in conditions — use [[ $x -eq 0 ]] etc. so "false" doesn't exit.
 
 # Lists direct children at the given path (must end with /). Output: one key per line.
 vaultsh_nav_list() {
   local path="$1"
-  local raw line rc jq_out
+  local raw line
   vaultsh_set_addr
   if command -v jq >/dev/null 2>&1; then
-    raw="$(vault kv list -format=json "$path" 2>&1)"
-    rc=$?
-    if [[ $rc -ne 0 ]]; then
-      printf '%s\n' "$raw"
-      return "$rc"
-    fi
-    jq_out="$(printf '%s\n' "$raw" | jq -r '(.data.keys // .) | .[]?' 2>/dev/null)"
-    if [[ -z "$jq_out" ]]; then
-      case "$raw" in
-        *error*|*permission*|*403*|*denied*) printf '%s\n' "$raw"; return 1 ;;
-      esac
-    fi
-    printf '%s\n' "$jq_out"
+    raw="$(vault kv list -format=json "$path" 2>&1)" || return 1
+    printf '%s\n' "$raw" | jq -r '(.data.keys // .) | .[]?' 2>/dev/null
   else
-    raw="$(vault kv list -format=table "$path" 2>&1)"
-    rc=$?
-    if [[ $rc -ne 0 ]]; then
-      printf '%s\n' "$raw"
-      return "$rc"
-    fi
+    # Fallback: parse human-readable table format (Keys / ---- / entries)
+    raw="$(vault kv list -format=table "$path" 2>&1)" || return 1
     printf '%s\n' "$raw" | tail -n +3 | while IFS= read -r line; do
       [[ -z "${line// /}" ]] && continue
       printf '%s\n' "$line"
@@ -65,9 +49,9 @@ vaultsh_nav_up() {
 # When pick_mode=1, selecting a leaf secret sets VAULTSH_PICKED_PATH and returns 0 instead of reading.
 vaultsh_nav_run() {
   local pick_mode="${1:-0}"
-  local current_path root list_out list_rc keys line selected full_path list_raw
+  local current_path root list_out list_rc keys line selected full_path
   local -a options options_display
-  local i idx list_tmp
+  local i idx
   root="${VAULTSH_NAV_ROOT}"
   # Ensure root ends with /
   root="${root%/}/"
@@ -81,44 +65,20 @@ vaultsh_nav_run() {
     return 1
   fi
 
-  if [[ -z "${VAULT_TOKEN:-}" ]] && [[ -f "${HOME}/.vault-token" ]]; then
-    VAULT_TOKEN="$(cat "${HOME}/.vault-token")"
-    export VAULT_TOKEN
-  fi
-
-  list_tmp="$(mktemp)"
-  trap 'rm -f "${list_tmp}"' RETURN
-
   while true; do
     vaultsh_section "Browse" "Browse: ${current_path}"
     set +e
-    if command -v jq >/dev/null 2>&1; then
-      vault kv list -format=json "$current_path" > "${list_tmp}" 2>&1
-    else
-      vault kv list -format=table "$current_path" > "${list_tmp}" 2>&1
-    fi
+    list_out="$(vaultsh_nav_list "$current_path" 2>&1)"
     list_rc=$?
     set -e
-    list_raw="$(cat "${list_tmp}")"
-    if [[ $list_rc -ne 0 ]] || [[ "$list_raw" == *"permission denied"* ]] || [[ "$list_raw" == *"403"* ]]; then
+    if [[ $list_rc -ne 0 ]] || [[ "$list_out" == *"permission denied"* ]] || [[ "$list_out" == *"403"* ]]; then
       vaultsh_error "Cannot list path (permission denied or invalid path)."
-      if [[ -n "${list_raw//[[:space:]]/}" ]]; then
-        printf '%s\n' "$list_raw" | head -10
-      else
-        printf '%s\n' "(vault list failed with no output — check VAULT_ADDR and token)"
-      fi
+      printf '%s\n' "$list_out" | head -5
+      # We already have a session here; don't suggest "session expired" or offer login.
       vaultsh_info "Check VAULTSH_NAV_ROOT (currently: ${VAULTSH_NAV_ROOT}) or policy list permission. Press Enter to return to menu."
       read -r -p "Press Enter to return to menu..." _
       return 0
     fi
-
-    set +e
-    if command -v jq >/dev/null 2>&1; then
-      list_out="$(jq -r '(.data.keys // .) | .[]?' "${list_tmp}" 2>/dev/null)"
-    else
-      list_out="$(tail -n +3 "${list_tmp}" | while IFS= read -r line; do [[ -z "${line// /}" ]] && continue; printf '%s\n' "$line"; done)"
-    fi
-    set -e
 
     keys=()
     while IFS= read -r line; do
