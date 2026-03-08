@@ -38,7 +38,7 @@ def load_config(script_dir: Optional[Path] = None) -> Dict[str, Any]:
         "VAULTSH_ADDR": "https://127.0.0.1:8200",
         "VAULTSH_READER_ROLE": "reader",
         "VAULTSH_OPERATOR_ROLE": "operator",
-        "VAULTSH_NAV_ROOT": "secret/",
+        "VAULTSH_NAV_ROOT": "",  # empty = show all KV mounts in Browse; set e.g. kv/ to start in one mount
         "VAULTSH_SESSION_PROBE_PATH": "",
         "VAULTSH_SESSION_PROBE_FIELD": "",
     }
