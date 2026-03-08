@@ -195,7 +195,7 @@ vaultsh_print_panel() {
   panel_rule="$(printf '%*s' "$VAULTSH_HEADER_WIDTH" "" | tr ' ' '─')"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$panel_rule" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 5 - ${#title} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s ▎ %s[%s%s%s]%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "$COLOR_PANEL" "$title" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s ▎ %s[%s%s%s]%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "$COLOR_PANEL" "$title" "$COLOR_RESET" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   while (($#)); do
     line="$1"
     if [[ "$line" =~ ^([0-9]+\.)([[:space:]].*)$ ]]; then
