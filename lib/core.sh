@@ -146,7 +146,7 @@ vaultsh_print_header() {
   local addr
   addr="$(vaultsh_current_addr)"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
-  pad=$(( VAULTSH_HEADER_WIDTH - 17 )); [[ $pad -lt 0 ]] && pad=0
+  pad=$(( VAULTSH_HEADER_WIDTH - 16 )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_PRIMARY" "HashiCorp Vault" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 14 - ${#token_badge} )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "context" "$COLOR_RESET" "$token_color" "$token_badge" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
