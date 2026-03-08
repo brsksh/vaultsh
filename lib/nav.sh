@@ -7,7 +7,7 @@ vaultsh_nav_list() {
   vaultsh_set_addr
   if command -v jq >/dev/null 2>&1; then
     raw="$(vault kv list -format=json "$path" 2>&1)" || return 1
-    printf '%s\n' "$raw" | jq -r '.data.keys[]?' 2>/dev/null
+    printf '%s\n' "$raw" | jq -r '(.data.keys // .) | .[]?' 2>/dev/null
   else
     # Fallback: parse human-readable table format (Keys / ---- / entries)
     raw="$(vault kv list -format=table "$path" 2>&1)" || return 1
