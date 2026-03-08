@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
 
 # Lists direct children at the given path (must end with /). Output: one key per line.
+# On failure, prints vault stderr to stdout so caller sees the real error.
 vaultsh_nav_list() {
   local path="$1"
-  local raw line
+  local raw line rc
   vaultsh_set_addr
   if command -v jq >/dev/null 2>&1; then
-    raw="$(vault kv list -format=json "$path" 2>&1)" || return 1
+    raw="$(vault kv list -format=json "$path" 2>&1)"
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      printf '%s\n' "$raw"
+      return "$rc"
+    fi
     printf '%s\n' "$raw" | jq -r '(.data.keys // .) | .[]?' 2>/dev/null
   else
-    # Fallback: parse human-readable table format (Keys / ---- / entries)
-    raw="$(vault kv list -format=table "$path" 2>&1)" || return 1
+    raw="$(vault kv list -format=table "$path" 2>&1)"
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+      printf '%s\n' "$raw"
+      return "$rc"
+    fi
     printf '%s\n' "$raw" | tail -n +3 | while IFS= read -r line; do
       [[ -z "${line// /}" ]] && continue
       printf '%s\n' "$line"
