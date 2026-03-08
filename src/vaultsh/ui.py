@@ -67,6 +67,17 @@ def _box_line(inner: str, width: int = HEADER_WIDTH) -> str:
     return (inner + " " * width)[:width]
 
 
+def _shorten_addr(addr: str, max_len: int = 32) -> str:
+    """Display-friendly address: strip scheme, optional path, truncate."""
+    s = (addr or "").strip()
+    if "://" in s:
+        s = s.split("://", 1)[1]
+    if "/" in s and not s.startswith("/"):
+        s = s.split("/", 1)[0]
+    s = s.rstrip("/")
+    return (s[: max_len - 1] + "…") if len(s) > max_len else s
+
+
 def print_header(
     session_line: Optional[str],
     session_color: str,
@@ -87,11 +98,12 @@ def print_header(
     pad = max(0, w - len(prefix) - len(session_part))
     c.print(Text("╭" + top + "╮", style="border"))
     c.print(Text("│", style="border") + Text(prefix, style="bold primary") + Text(session_part + " " * pad, style=session_color) + Text("│", style="border"))
-    line2 = f" {address}  nav: {nav_root}  {token_badge}  {menu_badge}"
+    addr_short = _shorten_addr(address)
+    line2 = f" {addr_short}  ·  nav: {nav_root}  ·  {token_badge}  {menu_badge}"
     c.print(Text("│", style="border") + Text((line2 + " " * w)[:w], style="dim") + Text("│", style="border"))
     c.print(Text("╰" + top + "╯", style="border"))
     if show_hint_panels:
-        c.print(Text("  Login, browse, read/write KV secrets, inspect session, diagnose.", style="muted"))
+        c.print(Text("  Login first; then browse or read. Optional: VAULTSH_NAV_ROOT=kv/ to skip mount list.", style="muted"))
     c.print()
 
 
