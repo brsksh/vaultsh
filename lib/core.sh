@@ -147,7 +147,7 @@ vaultsh_print_header() {
   addr="$(vaultsh_current_addr)"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$top_rule" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 16 )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_PRIMARY" "HashiCorp Vault" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_BOLD" "$COLOR_PRIMARY" "HashiCorp Vault" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#token_badge} )); [[ $pad -lt 0 ]] && pad=0
   printf '%s│%s %-12s%s %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "context" "$COLOR_RESET" "$token_color" "$token_badge" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 12 - 1 - ${#menu_badge} )); [[ $pad -lt 0 ]] && pad=0
@@ -195,7 +195,7 @@ vaultsh_print_panel() {
   panel_rule="$(printf '%*s' "$VAULTSH_HEADER_WIDTH" "" | tr ' ' '─')"
   printf '%s╭%s╮%s\n' "$COLOR_BORDER" "$panel_rule" "$COLOR_RESET"
   pad=$(( VAULTSH_HEADER_WIDTH - 2 - 5 - ${#title} )); [[ $pad -lt 0 ]] && pad=0
-  printf '%s│%s ▎ %s[%s%s%s]%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "$COLOR_PANEL" "$title" "$COLOR_RESET" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
+  printf '%s│%s ▎ %s[%s%s%s]%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "$COLOR_PANEL" "$title" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
   while (($#)); do
     line="$1"
     if [[ "$line" =~ ^([0-9]+\.)([[:space:]].*)$ ]]; then
@@ -203,7 +203,7 @@ vaultsh_print_panel() {
       printf '%s│%s   %s%s%s%s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_ACCENT" "${BASH_REMATCH[1]}" "$COLOR_RESET" "$COLOR_MUTED" "${BASH_REMATCH[2]}" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     else
       pad=$(( VAULTSH_HEADER_WIDTH - 2 - 3 - ${#line} )); [[ $pad -lt 0 ]] && pad=0
-      printf '%s│%s   %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_MUTED" "$line" "$COLOR_RESET" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
+      printf '%s│%s   %s%s%s%*s%s│%s\n' "$COLOR_BORDER" "$COLOR_RESET" "$COLOR_MUTED" "$line" "${pad:-0}" "" "$COLOR_BORDER" "$COLOR_RESET"
     fi
     shift
   done
