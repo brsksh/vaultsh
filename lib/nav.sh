@@ -74,10 +74,10 @@ vaultsh_nav_run() {
     if [[ $list_rc -ne 0 ]] || [[ "$list_out" == *"permission denied"* ]] || [[ "$list_out" == *"403"* ]]; then
       vaultsh_error "Cannot list path (permission denied or invalid path)."
       printf '%s\n' "$list_out" | head -5
-      if vaultsh_offer_login "Session may have expired."; then
-        continue
-      fi
-      return 1
+      # We already have a session here; don't suggest "session expired" or offer login.
+      vaultsh_info "Check VAULTSH_NAV_ROOT (currently: ${VAULTSH_NAV_ROOT}) or policy list permission. Press Enter to return to menu."
+      read -r -p "Press Enter to return to menu..." _
+      return 0
     fi
 
     keys=()
