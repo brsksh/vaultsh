@@ -98,12 +98,12 @@ def print_header(
 
 
 def print_panel(title: str, *lines: str) -> None:
-    """Draw a box with title in the top border; top/bottom borders match exactly (HEADER_WIDTH inner)."""
+    """Draw a box with title in the top border; top/bottom borders match (ASCII-only for alignment)."""
     c = console()
     inner = HEADER_WIDTH  # 72 chars between corners → total line length 74
-    title_part = f" ▎ [{title}] "
+    title_part = f" [{title}] "  # ASCII only so box aligns in all terminals
     if len(title_part) > inner:
-        title_part = title_part[: inner - 2] + "… "
+        title_part = title_part[: inner - 2] + ".. "
     top_inner = (title_part + "─" * inner)[:inner]
     c.print(Text("╭" + top_inner + "╮", style="border"))
     for line in lines:

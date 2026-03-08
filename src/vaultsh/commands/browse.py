@@ -35,13 +35,43 @@ def _full_path(mount: str, path: str) -> str:
 
 
 def _list_keys(client: Any, mount_point: str, path: str) -> list[str]:
-    """List direct children at path (path relative to mount). Returns list of key names (with / for dirs)."""
+    """List direct children at path (path relative to mount). Try KV v2, then v1, then raw LIST. Returns list of key names (with / for dirs)."""
+    path = (path or "").strip("/")
+    normalized = path + "/" if path else ""
+
+    # 1) KV v2
     try:
-        r = client.secrets.kv.v2.list_secrets(path=path or "", mount_point=mount_point)
+        r = client.secrets.kv.v2.list_secrets(path=path, mount_point=mount_point)
         keys = (r.get("data") or {}).get("keys") or []
         return list(keys)
     except Exception:
-        return []
+        pass
+
+    # 2) KV v1 (may not exist in older hvac)
+    kv_v1 = getattr(client.secrets.kv, "v1", None)
+    if kv_v1 is not None:
+        for p in (path, normalized.rstrip("/") or "/", ""):
+            try:
+                r = kv_v1.list_secrets(path=p or "", mount_point=mount_point)
+                keys = (r.get("data") or {}).get("keys") or []
+                return list(keys)
+            except Exception:
+                continue
+
+    # 3) Raw LIST (v2 then v1 style)
+    adapter = getattr(client, "_adapter", None)
+    if adapter is not None and hasattr(adapter, "list"):
+        for api_path in (
+            f"/v1/{mount_point}/metadata/{normalized}".rstrip("/"),
+            f"/v1/{mount_point}/{normalized}".rstrip("/") or f"/v1/{mount_point}/",
+        ):
+            try:
+                r = adapter.list(api_path)
+                keys = (r.get("data") or {}).get("keys") or []
+                return list(keys)
+            except Exception:
+                continue
+    return []
 
 
 def _can_go_up(current_path: str, root_path: str) -> bool:
@@ -67,13 +97,20 @@ def _path_up(current_path: str, root_path: str) -> str:
 
 
 def _read_secret(client: Any, mount_point: str, path: str) -> Optional[dict]:
-    """Path is relative to mount, no leading/trailing slash for the secret key."""
-    try:
-        r = client.secrets.kv.v2.read_secret_version(path=path.rstrip("/"), mount_point=mount_point)
-        data = (r.get("data") or {}).get("data") or r.get("data") or {}
-        return data
-    except Exception:
-        return None
+    """Path is relative to mount, no leading/trailing slash for the secret key. Try KV v2, then v1."""
+    path = path.rstrip("/")
+    for version in ("v2", "v1"):
+        try:
+            if version == "v2":
+                r = client.secrets.kv.v2.read_secret_version(path=path, mount_point=mount_point)
+                data = (r.get("data") or {}).get("data") or r.get("data") or {}
+            else:
+                r = client.secrets.kv.v1.read_secret(path=path, mount_point=mount_point)
+                data = (r.get("data") or r) or {}
+            return data if isinstance(data, dict) else None
+        except Exception:
+            continue
+    return None
 
 
 def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool = False) -> Optional[str]:
@@ -96,12 +133,6 @@ def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool
         print_section("Browse", f"Browse: {full}")
 
         keys = _list_keys(client, mount_point, current_path.rstrip("/") if current_path else "")
-        if keys is None:
-            error("Cannot list path (permission denied or invalid path).")
-            info("Check VAULTSH_NAV_ROOT or policy list permission.")
-            pause()
-            return None
-
         options: list[tuple[str, str, str]] = []
         option_keys: list[str] = []
         if _can_go_up(current_path, root_path):
@@ -116,8 +147,9 @@ def run_browse(cfg: dict[str, Any], argv: Optional[list] = None, pick_mode: bool
                 option_keys.append(k)
 
         if not options:
-            info("This path is empty or you have no list permission. Use .. to go up or press Enter to exit.")
-            pause()
+            info("This path is empty or you have no list permission.")
+            info("Check VAULTSH_NAV_ROOT and your policy's list capability.")
+            select_option("Path", [("b", "Back to menu", "Return to main menu.")], fzf_header_extra="Press Enter to return.")
             return None
 
         choice = select_option("Path", options, fzf_header_extra="Enter: open/read. ESC: back to menu.")

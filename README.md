@@ -43,34 +43,34 @@ A standalone, reusable CLI wrapper around HashiCorp Vault for interactive use. I
 
 ## Installation
 
-### From source (development or local install)
+### Quick setup (from source)
+
+```bash
+git clone https://github.com/brsksh/vaultsh.git ~/.local/share/vaultsh
+cd ~/.local/share/vaultsh
+./setup.sh
+```
+
+The script creates a venv, installs the package, links `vaultsh` and `vaultsh-setup` into `~/.local/bin` (if that directory exists), and creates `~/.config/vaultsh/config` from the example if missing. Edit the config as needed, then run `vaultsh`.
+
+### From source (manual)
 
 ```bash
 git clone https://github.com/brsksh/vaultsh.git ~/.local/share/vaultsh
 cd ~/.local/share/vaultsh
 python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
 .venv/bin/pip install -e .
-# Optional: symlink the venv binary
 ln -sf "$(pwd)/.venv/bin/vaultsh" ~/.local/bin/vaultsh
+cp config.example ~/.config/vaultsh/config   # then edit
 ```
 
-If your `pip` does not support editable install from `pyproject.toml` alone:
+If your `pip` does not support editable install from `pyproject.toml` alone, run `./setup.sh` (it upgrades pip) or:
 
 ```bash
 .venv/bin/pip install hvac rich
-# Run with:
-PYTHONPATH=src .venv/bin/python -m vaultsh
-# Or install in non-editable mode:
-.venv/bin/pip install .
-```
-
-Create a config file (recommended) by copying the example and editing it:
-
-```bash
-cp config.example ~/.config/vaultsh/config
-# or next to the repo:
-cp config.example vaultsh.conf
-# Edit as needed (VAULTSH_ADDR, roles, VAULTSH_NAV_ROOT, etc.)
+# Run with: PYTHONPATH=src .venv/bin/python -m vaultsh
+# Or: .venv/bin/pip install .
 ```
 
 ---

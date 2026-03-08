@@ -23,6 +23,12 @@ _SESSION_CACHE: tuple[float, str, str] = (0, "", "warn")
 SESSION_CACHE_TTL = 30
 
 
+def invalidate_session_cache() -> None:
+    """Force next menu draw to re-check session (e.g. after login)."""
+    global _SESSION_CACHE
+    _SESSION_CACHE = (0, "", "warn")
+
+
 def _get_session_line(cfg: dict[str, Any]) -> tuple[str, str]:
     """Return (session_line, style_name). Cached for SESSION_CACHE_TTL seconds."""
     global _SESSION_CACHE
@@ -162,10 +168,12 @@ def _handle_palette(cfg: dict[str, Any]) -> None:
         return
     if choice == "1":
         session.run_login_role(cfg, cfg.get("VAULTSH_READER_ROLE", "reader"))
+        invalidate_session_cache()
         pause()
         return
     if choice == "2":
         session.run_login_role(cfg, cfg.get("VAULTSH_OPERATOR_ROLE", "operator"))
+        invalidate_session_cache()
         pause()
         return
     if choice == "3":
@@ -208,8 +216,10 @@ def _handle_login_menu(cfg: dict[str, Any]) -> None:
         return
     if choice == "1":
         session.run_login_role(cfg, reader)
+        invalidate_session_cache()
     elif choice == "2":
         session.run_login_role(cfg, operator)
+        invalidate_session_cache()
     pause()
 
 
