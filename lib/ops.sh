@@ -72,7 +72,11 @@ vaultsh_refresh_header_session() {
     return 0
   fi
 
-  vaultsh_require_command vault 2>/dev/null || return 0
+  if ! vaultsh_require_command vault 2>/dev/null; then
+    VAULTSH_HEADER_SESSION_LINE="Session: ? (vault nicht gefunden)"
+    VAULTSH_HEADER_SESSION_TS=$now
+    return 0
+  fi
   vaultsh_set_addr
 
   set +e

@@ -134,25 +134,28 @@ vaultsh_handle_status_menu() {
     "4|Run both|A quick read on connection plus identity state." \
     "b|Back|Return to the main menu.")" || return 0
 
+  set +e
   case "$choice" in
     1)
       vaultsh_session_check || true
       ;;
     2)
-      vaultsh_show_status
+      vaultsh_show_status || true
       ;;
     3)
-      vaultsh_show_token_lookup
+      vaultsh_show_token_lookup || true
       ;;
     4)
-      vaultsh_show_status
+      vaultsh_show_status || true
       echo
-      vaultsh_show_token_lookup
+      vaultsh_show_token_lookup || true
       ;;
     *)
+      set -e
       return 0
       ;;
   esac
+  set -e
 
   vaultsh_pause
 }
