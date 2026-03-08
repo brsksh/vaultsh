@@ -23,7 +23,9 @@ vaultsh_offer_login() {
   printf '%s%s%s\n' "$COLOR_WARN" "$reason" "$COLOR_RESET"
   if vaultsh_confirm "Log in now?" "N"; then
     vaultsh_login_role "${VAULTSH_READER_ROLE}"
-    return $?
+    local rc=$?
+    (( rc == 0 )) && unset -v VAULTSH_HEADER_SESSION_TS VAULTSH_HEADER_SESSION_LINE VAULTSH_HEADER_SESSION_COLOR 2>/dev/null || true
+    return "$rc"
   fi
   return 1
 }
@@ -46,6 +48,75 @@ vaultsh_show_token_lookup() {
   vaultsh_require_command vault || return 1
   vaultsh_set_addr
   vault token lookup
+}
+
+# Cache TTL in seconds for header session line
+: "${VAULTSH_HEADER_SESSION_CACHE_TTL:=30}"
+
+# Refresh VAULTSH_HEADER_SESSION_LINE and VAULTSH_HEADER_SESSION_COLOR for header (with cache).
+# Call from vaultsh_print_header. Invalidates cache after VAULTSH_HEADER_SESSION_CACHE_TTL seconds.
+vaultsh_refresh_header_session() {
+  local now ts json_raw lookup_rc expire_time ttl line probe_path probe_field
+  now=$(date +%s 2>/dev/null) || now=0
+  ts="${VAULTSH_HEADER_SESSION_TS:-0}"
+  if (( ts > 0 && (now - ts) < VAULTSH_HEADER_SESSION_CACHE_TTL )) && [[ -n "${VAULTSH_HEADER_SESSION_LINE:-}" ]]; then
+    return 0
+  fi
+
+  VAULTSH_HEADER_SESSION_LINE=""
+  VAULTSH_HEADER_SESSION_COLOR="${COLOR_WARN}"
+
+  if [[ "$(vaultsh_token_state)" == "missing" ]]; then
+    VAULTSH_HEADER_SESSION_LINE="Session: nicht eingeloggt"
+    VAULTSH_HEADER_SESSION_TS=$now
+    return 0
+  fi
+
+  vaultsh_require_command vault 2>/dev/null || return 0
+  vaultsh_set_addr
+
+  set +e
+  json_raw="$(vault token lookup -format=json 2>&1)"
+  lookup_rc=$?
+  set -e
+
+  if (( lookup_rc == 0 )); then
+    line="$(printf '%s\n' "$json_raw" | tr -d '\n' | tr -s ' \t' ' ')"
+    expire_time=""
+    ttl=""
+    if [[ "$line" =~ \"expire_time\":\"([^\"]+)\" ]]; then
+      expire_time="${BASH_REMATCH[1]}"
+    fi
+    if [[ "$line" =~ \"ttl\":\"([^\"]+)\" ]]; then
+      ttl="${BASH_REMATCH[1]}"
+    fi
+    if [[ -n "$expire_time" ]]; then
+      expire_time="${expire_time/T/ }"
+      expire_time="${expire_time%%.*}"
+      expire_time="${expire_time%%Z}"
+      VAULTSH_HEADER_SESSION_LINE="Session: aktiv (bis ${expire_time})"
+    else
+      VAULTSH_HEADER_SESSION_LINE="Session: aktiv"
+    fi
+    VAULTSH_HEADER_SESSION_COLOR="${COLOR_SUCCESS}"
+    VAULTSH_HEADER_SESSION_TS=$now
+    return 0
+  fi
+
+  probe_path="${VAULTSH_SESSION_PROBE_PATH:-}"
+  probe_field="${VAULTSH_SESSION_PROBE_FIELD:-}"
+  if [[ -n "$probe_path" && -n "$probe_field" ]]; then
+    if vault kv get "-field=${probe_field}" "${probe_path}" >/dev/null 2>&1; then
+      VAULTSH_HEADER_SESSION_LINE="Session: aktiv (KV)"
+      VAULTSH_HEADER_SESSION_COLOR="${COLOR_SUCCESS}"
+      VAULTSH_HEADER_SESSION_TS=$now
+      return 0
+    fi
+  fi
+
+  VAULTSH_HEADER_SESSION_LINE="Session: abgelaufen oder kein Zugriff"
+  VAULTSH_HEADER_SESSION_TS=$now
+  return 0
 }
 
 # Single-line session status: "Session valid until ..." or clear message for missing/expired/denied.

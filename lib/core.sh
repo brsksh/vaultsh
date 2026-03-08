@@ -101,6 +101,11 @@ vaultsh_print_header() {
     clear
   fi
 
+  vaultsh_refresh_header_session 2>/dev/null || true
+  if [[ -n "${VAULTSH_HEADER_SESSION_LINE:-}" ]]; then
+    printf '%s%s%s\n\n' "${VAULTSH_HEADER_SESSION_COLOR:-$COLOR_WARN}" "${VAULTSH_HEADER_SESSION_LINE}" "$COLOR_RESET"
+  fi
+
   case "$token_state" in
     env)
       token_badge="TOKEN:env"
